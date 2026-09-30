@@ -48,7 +48,7 @@ ESPressMiner32/
 ## Build & flash (VS Code + PlatformIO)
 
 1. Open the folder in VS Code (the PlatformIO extension will be suggested).
-2. Adjust `upload_port` / `monitor_port` in `platformio.ini` to your COM port (or delete those lines and let PlatformIO detect it).
+2. Connect the ESP32 via USB. PlatformIO finds the COM port automatically.
 3. Click **→ Upload** in the status bar (or `pio run -t upload`).
 4. The **serial monitor** (115200 baud) shows the self-test, the benchmark and the hashrate every 5 s.
 
