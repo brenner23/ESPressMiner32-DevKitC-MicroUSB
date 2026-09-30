@@ -119,6 +119,10 @@ immer drei Hardware-Blöcke nötig.
 
 Messwerkzeug: `pio run -e hw_probe -t upload` (misst Registerzugriffe, Engine-Zeiten, Phasenprofil).
 
+## Entwicklung
+
+Entwickelt mit Unterstützung von [Claude](https://claude.ai) (Anthropic) als KI-Programmierassistent. Entscheidungen, Tests auf echter Hardware und Messungen: brenner23.
+
 ## Lizenz
 
 [MIT](LICENSE) © 2026 brenner23. Nutzung auf eigene Verantwortung.

@@ -120,6 +120,10 @@ The classic ESP32 cannot load a SHA midstate back into the engine, so every nonc
 
 Measurement tool: `pio run -e hw_probe -t upload` (register access costs, engine timings, phase profile).
 
+## Development
+
+Developed with the assistance of [Claude](https://claude.ai) (Anthropic) as an AI coding assistant. Design decisions, testing on real hardware and measurements by brenner23.
+
 ## License
 
 [MIT](LICENSE) © 2026 brenner23. Use at your own risk.
