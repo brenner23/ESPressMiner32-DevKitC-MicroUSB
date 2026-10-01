@@ -1,4 +1,4 @@
-# ☕ ESPressMiner32 – DevKit V1 (Micro-USB)
+# ☕ ESPressMiner32 – DevKitC 38-pin (Micro-USB)
 
 🇬🇧 **English** · 🇩🇪 [Deutsch](README.de.md)
 
@@ -6,13 +6,13 @@ A Bitcoin Stratum (V1) miner for the **classic ESP32**. It drives the **SHA-256 
 through direct register access with a pipeline: the data for the next block is written while the engine
 is still computing.
 
-Variant for the older **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**, CP2102, Micro-USB,
-variant with **two extra pins 3V3 and GND at the top** end of the board)
+Variant for the older **38-pin ESP32-DevKitC** (clone, ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**,
+CP2102, Micro-USB; recognisable by **3V3 and GND at the very top** left/right next to the antenna)
 with an optional external **LED on GPIO13**.
 
 > 💡 **The LED is optional** – the miner works fine without it. If you want one:
 > GPIO13 → 220–330 Ω resistor → LED anode (long leg), cathode → GND.
-> GPIO13 was chosen because **D13 sits right next to a GND pin on the DevKit V1** – an LED with a
+> GPIO13 was chosen because **G13 sits right next to a GND pin on this board** (between G12 and G13) – an LED with a
 > resistor simply plugs onto those two neighbouring pins.
 > Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
 > Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
@@ -26,7 +26,7 @@ On ESP32-D0WD-V3 (revision 3) the same firmware runs at **~902 kH/s**.
 > starts. The firmware detects the chip revision at boot and then reads the SHA buffer using the
 > protected sequence from ESP-IDF. It costs ~13 % but runs stable.
 
-🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitV1-MicroUSB  
+🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB  
 🔗 **Main project (USB-C, rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobby project.** Realistically an ESP32 will never find a Bitcoin block. This is about learning,

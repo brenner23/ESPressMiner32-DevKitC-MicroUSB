@@ -1,4 +1,4 @@
-# ☕ ESPressMiner32 – DevKit V1 (Micro-USB)
+# ☕ ESPressMiner32 – DevKitC 38-Pin (Micro-USB)
 
 🇬🇧 [English](README.md) · 🇩🇪 **Deutsch**
 
@@ -6,13 +6,13 @@ Ein Bitcoin-Stratum-Miner (V1) für den **klassischen ESP32**. Er nutzt den **SH
 per direktem Registerzugriff mit einer Pipeline: Die Daten für den nächsten Block werden geschrieben,
 während die Engine noch rechnet.
 
-Variante für das ältere **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **Revision 1.0**, CP2102, Micro-USB,
-Variante mit **zwei zusätzlichen Pins 3V3 und GND oben** am Board-Ende)
+Variante für das ältere **ESP32-DevKitC mit 38 Pins** (Nachbau, ESP-WROOM-32, ESP32-D0WDQ6 **Revision 1.0**,
+CP2102, Micro-USB; erkennbar an **3V3 und GND ganz oben** links/rechts neben der Antenne)
 mit optionaler externer **LED an GPIO13**.
 
 > 💡 **LED ist optional** – der Miner läuft auch ohne. Wer eine möchte:
 > GPIO13 → Vorwiderstand 220–330 Ω → LED-Anode (langes Bein), Kathode → GND.
-> GPIO13 wurde gewählt, weil **D13 auf dem DevKit V1 direkt neben einem GND-Pin** liegt – eine LED
+> GPIO13 wurde gewählt, weil **G13 auf diesem Board direkt neben einem GND-Pin** (zwischen G12 und G13) liegt – eine LED
 > mit Vorwiderstand lässt sich so einfach auf die beiden Nachbar-Pins stecken.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
@@ -26,7 +26,7 @@ Auf ESP32-D0WD-V3 (Revision 3) läuft dieselbe Firmware mit **~902 kH/s**.
 > Watchdog-Neustart direkt nach Mining-Beginn. Die Firmware erkennt die Chip-Revision beim Start und
 > liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF. Das kostet ~13 %, läuft aber stabil.
 
-🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitV1-MicroUSB  
+🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB  
 🔗 **Hauptprojekt (USB-C, Rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobbyprojekt.** Mit einem ESP32 findet man realistisch keinen Bitcoin-Block. Es geht ums Lernen,
