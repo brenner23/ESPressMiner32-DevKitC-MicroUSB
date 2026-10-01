@@ -8,6 +8,8 @@ während die Engine noch rechnet.
 
 Variante für das ältere **ESP32-DevKitC mit 38 Pins** (Nachbau, ESP-WROOM-32, ESP32-D0WDQ6 **Revision 1.0**,
 CP2102, Micro-USB; erkennbar an **3V3 und GND ganz oben** links/rechts neben der Antenne)
+
+<p align="center"><img src="docs/board-devkitc-38pin.webp" alt="ESP32-DevKitC 38-Pin mit Micro-USB" width="240"></p>
 mit optionaler externer **LED an GPIO13**.
 
 > 💡 **LED ist optional** – der Miner läuft auch ohne. Wer eine möchte:

@@ -8,6 +8,8 @@ is still computing.
 
 Variant for the older **38-pin ESP32-DevKitC** (clone, ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**,
 CP2102, Micro-USB; recognisable by **3V3 and GND at the very top** left/right next to the antenna)
+
+<p align="center"><img src="docs/board-devkitc-38pin.webp" alt="38-pin ESP32-DevKitC with Micro-USB" width="240"></p>
 with an optional external **LED on GPIO13**.
 
 > 💡 **The LED is optional** – the miner works fine without it. If you want one:
