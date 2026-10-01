@@ -25,7 +25,7 @@ On ESP32-D0WD-V3 (revision 3) the same firmware runs at **~902 kH/s**.
 > starts. The firmware detects the chip revision at boot and then reads the SHA buffer using the
 > protected sequence from ESP-IDF. It costs ~13 % but runs stable.
 
-🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitV1  
+🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitV1-MicroUSB  
 🔗 **Main project (USB-C, rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobby project.** Realistically an ESP32 will never find a Bitcoin block. This is about learning,

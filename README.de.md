@@ -25,7 +25,7 @@ Auf ESP32-D0WD-V3 (Revision 3) läuft dieselbe Firmware mit **~902 kH/s**.
 > Watchdog-Neustart direkt nach Mining-Beginn. Die Firmware erkennt die Chip-Revision beim Start und
 > liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF. Das kostet ~13 %, läuft aber stabil.
 
-🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitV1  
+🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitV1-MicroUSB  
 🔗 **Hauptprojekt (USB-C, Rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobbyprojekt.** Mit einem ESP32 findet man realistisch keinen Bitcoin-Block. Es geht ums Lernen,
