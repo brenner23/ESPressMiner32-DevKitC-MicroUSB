@@ -6,7 +6,8 @@ A Bitcoin Stratum (V1) miner for the **classic ESP32**. It drives the **SHA-256 
 through direct register access with a pipeline: the data for the next block is written while the engine
 is still computing.
 
-Variant for the older **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**, CP2102, Micro-USB)
+Variant for the older **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**, CP2102, Micro-USB,
+variant with **two extra pins 3V3 and GND at the top** end of the board)
 with an optional external **LED on GPIO13**.
 
 > 💡 **The LED is optional** – the miner works fine without it. If you want one:
