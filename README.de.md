@@ -9,7 +9,9 @@ während die Engine noch rechnet.
 Variante für das ältere **ESP32-DevKitC mit 38 Pins** (Nachbau, ESP-WROOM-32, ESP32-D0WDQ6 **Revision 1.0**,
 CP2102, Micro-USB; erkennbar an **3V3 und GND ganz oben** links/rechts neben der Antenne)
 
-<p align="center"><img src="docs/board-devkitc-38pin.webp" alt="ESP32-DevKitC 38-Pin mit Micro-USB" width="240"></p>
+<p align="center"><img src="docs/board-devkitc-38pin.webp" alt="ESP32-DevKitC 38-Pin mit Micro-USB" width="240"><br>
+<sub>Das ältere Board: <b>Micro-USB</b>, 3V3/GND ganz oben, G13 neben GND. Läuft die Firmware auf einem
+anderen ESP32 mit Rev.-1-Chip, greift der Fix genauso – die Revision wird automatisch erkannt.</sub></p>
 mit optionaler externer **LED an GPIO13**.
 
 > 💡 **LED ist optional** – der Miner läuft auch ohne. Wer eine möchte:
