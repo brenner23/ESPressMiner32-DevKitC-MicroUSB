@@ -11,6 +11,8 @@ mit optionaler externer **LED an GPIO13**.
 
 > 💡 **LED ist optional** – der Miner läuft auch ohne. Wer eine möchte:
 > GPIO13 → Vorwiderstand 220–330 Ω → LED-Anode (langes Bein), Kathode → GND.
+> GPIO13 wurde gewählt, weil **D13 auf dem DevKit V1 direkt neben einem GND-Pin** liegt – eine LED
+> mit Vorwiderstand lässt sich so einfach auf die beiden Nachbar-Pins stecken.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
 

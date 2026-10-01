@@ -11,6 +11,8 @@ with an optional external **LED on GPIO13**.
 
 > 💡 **The LED is optional** – the miner works fine without it. If you want one:
 > GPIO13 → 220–330 Ω resistor → LED anode (long leg), cathode → GND.
+> GPIO13 was chosen because **D13 sits right next to a GND pin on the DevKit V1** – an LED with a
+> resistor simply plugs onto those two neighbouring pins.
 > Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
 > Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
 
