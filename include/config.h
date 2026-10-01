@@ -49,5 +49,6 @@
 // So lange wird beim Start auf das gespeicherte WLAN gewartet, dann Portal zusaetzlich an
 #define WIFI_CONNECT_TIMEOUT_MS  20000UL
 
-// Blaue Onboard-LED: leuchtet, solange gemint wird; kurz aus bei jedem Share. -1 = aus
-#define LED_PIN                  2
+// Optionale externe LED an GPIO13 (ESP32 DevKit USB-Micro, mit Vorwiderstand gegen GND):
+// leuchtet, solange gemint wird; kurz aus bei jedem Share. -1 = aus
+#define LED_PIN                  13

@@ -7,6 +7,7 @@
 #include <soc/hwcrypto_reg.h>
 #include <sha/sha_parallel_engine.h>
 #include <xtensa/core-macros.h>
+#include <esp_chip_info.h>
 
 // Register-Offsets relativ zu SHA_TEXT_BASE (0x3FF03000):
 //   0x00..0x3C Textpuffer T[0..15], 0x90 START, 0x94 CONTINUE, 0x98 LOAD, 0x9C BUSY
@@ -48,9 +49,29 @@ static inline __attribute__((always_inline)) uint32_t opaque(uint32_t v)
     __asm__ __volatile__("s32i %0, %1, " #off : : "r"(1), "r"(base) : "memory")
 #define SHA_FENCE() __asm__ __volatile__("memw" : : : "memory")
 
+// ESP32 bis Revision 1.x (Errata 3.10): Liest ein Kern DPORT-Register (SHA liegt dort),
+// waehrend der andere Kern APB-Register liest, kann der andere Kern falsche Daten
+// bekommen -> WLAN-Treiber "wifi assert" + Watchdog. Abhilfe wie ESP-IDF
+// (esp_dport_access_reg_read): Interrupts bis Level 5 sperren, Dummy-Lesezugriff
+// auf APB, direkt danach das DPORT-Register lesen. Ab Revision 3 nicht noetig.
+static bool s_dportFix = false;
+
 static inline __attribute__((always_inline)) uint32_t sha_rd(uint32_t* base, int wordIdx)
 {
-    return *(volatile uint32_t*)(base + wordIdx);
+    volatile uint32_t* reg = (volatile uint32_t*)(base + wordIdx);
+    if (!s_dportFix) return *reg;
+    uint32_t lvl, apb, val;
+    __asm__ __volatile__(
+        "rsil %[lvl], 5\n"
+        "movi %[apb], 0x3ff40078\n"
+        "l32i %[apb], %[apb], 0\n"
+        "l32i %[val], %[reg], 0\n"
+        "wsr  %[lvl], ps\n"
+        "rsync\n"
+        : [lvl] "=&r"(lvl), [apb] "=&a"(apb), [val] "=&r"(val)
+        : [reg] "r"(reg)
+        : "memory");
+    return val;
 }
 
 static inline __attribute__((always_inline)) uint32_t now() { return XTHAL_GET_CCOUNT(); }
@@ -68,6 +89,12 @@ void hw_sha_begin()
     if (!esp_sha_try_lock_engine(SHA1))     Serial.println("[HW-SHA] SHA1-Engine belegt");
     if (!esp_sha_try_lock_engine(SHA2_256)) Serial.println("[HW-SHA] SHA256-Engine belegt");
     Serial.println("[HW-SHA] Beschleuniger reserviert");
+
+    esp_chip_info_t ci;
+    esp_chip_info(&ci);
+    s_dportFix = ci.revision < 300;
+    Serial.printf("[HW-SHA] Chip-Revision v%d.%d%s\n", ci.revision / 100, ci.revision % 100,
+                  s_dportFix ? " -> DPORT-Workaround aktiv (aeltere ESP32)" : "");
 }
 
 // Vorbedingung/Nachbedingung jeder Nonce: T[8..15] enthaelt b1[8..15].
@@ -225,3 +252,5 @@ void hw_scan_h7(const uint32_t blk1[16], const uint32_t blk2[3],
 void hw_sha_set_timing(const HwTiming& t) { s_timing = t; }
 
 HwTiming hw_sha_timing() { return s_timing; }
+
+bool hw_sha_dport_fix() { return s_dportFix; }

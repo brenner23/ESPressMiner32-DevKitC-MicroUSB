@@ -1,4 +1,4 @@
-# ☕ ESPressMiner32
+# ☕ ESPressMiner32 – DevKit V1 (Micro-USB)
 
 🇬🇧 **English** · 🇩🇪 [Deutsch](README.de.md)
 
@@ -6,9 +6,25 @@ A Bitcoin Stratum (V1) miner for the **classic ESP32**. It drives the **SHA-256 
 through direct register access with a pipeline: the data for the next block is written while the engine
 is still computing.
 
-Measured on ESP32-D0WD-V3 @ 240 MHz: **~902 kH/s** (265 cycles per double SHA-256).
+Variant for the older **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **revision 1.0**, CP2102, Micro-USB)
+with an optional external **LED on GPIO13**.
 
-🔗 **Project page:** https://github.com/brenner23/ESPressMiner32
+> 💡 **The LED is optional** – the miner works fine without it. If you want one:
+> GPIO13 → 220–330 Ω resistor → LED anode (long leg), cathode → GND.
+> Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
+> Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
+
+Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz: **~786 kH/s** (304 cycles per double SHA-256).
+On ESP32-D0WD-V3 (revision 3) the same firmware runs at **~902 kH/s**.
+
+> **Why slower?** ESP32 up to revision 1.x has a silicon bug (Espressif errata 3.10): when one core
+> reads a DPORT register (where the SHA accelerator lives) while the other core reads APB registers,
+> the other core can get corrupted data. Result: `wifi assert` and a watchdog reset right after mining
+> starts. The firmware detects the chip revision at boot and then reads the SHA buffer using the
+> protected sequence from ESP-IDF. It costs ~13 % but runs stable.
+
+🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitV1  
+🔗 **Main project (USB-C, rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobby project.** Realistically an ESP32 will never find a Bitcoin block. This is about learning,
 > tinkering and pushing the hardware to its limit. Great for solo pools, lottery mining or your own test pool.
@@ -19,13 +35,13 @@ Measured on ESP32-D0WD-V3 @ 240 MHz: **~902 kH/s** (265 cycles per double SHA-25
 
 ## Features
 
-- **~902 kH/s** on a classic ESP32 (hardware SHA, calibrated pipeline)
+- **~786 kH/s** on ESP32 rev. 1.0, **~902 kH/s** on rev. 3 (hardware SHA, calibrated pipeline, revision detected automatically)
 - **Self-test** at boot (genesis block, 2000 random headers, 5000 nonces). If it fails, the miner does not mine.
 - **Every hit is re-checked in software** before a share is sent to the pool
 - **Web dashboard** at `http://espressminer.local/` with hashrate history, JSON at `/api/stats`
 - **Primary and secondary pool** with automatic failover
 - **Setup without coding:** Wi-Fi portal, GUI setup tool or command line
-- **Blue LED (GPIO2)** is on while mining and blinks on every share
+- **Optional LED on GPIO13** is on while mining and blinks on every share
 
 ## Project layout
 

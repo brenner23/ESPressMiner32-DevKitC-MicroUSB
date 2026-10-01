@@ -1,4 +1,4 @@
-# ☕ ESPressMiner32
+# ☕ ESPressMiner32 – DevKit V1 (Micro-USB)
 
 🇬🇧 [English](README.md) · 🇩🇪 **Deutsch**
 
@@ -6,9 +6,25 @@ Ein Bitcoin-Stratum-Miner (V1) für den **klassischen ESP32**. Er nutzt den **SH
 per direktem Registerzugriff mit einer Pipeline: Die Daten für den nächsten Block werden geschrieben,
 während die Engine noch rechnet.
 
-Gemessen auf ESP32-D0WD-V3 @ 240 MHz: **~902 kH/s** (265 Takte pro Double-SHA256).
+Variante für das ältere **ESP32 DevKit V1** (ESP-WROOM-32, ESP32-D0WDQ6 **Revision 1.0**, CP2102, Micro-USB)
+mit optionaler externer **LED an GPIO13**.
 
-🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32
+> 💡 **LED ist optional** – der Miner läuft auch ohne. Wer eine möchte:
+> GPIO13 → Vorwiderstand 220–330 Ω → LED-Anode (langes Bein), Kathode → GND.
+> Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
+> Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
+
+Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz: **~786 kH/s** (304 Takte pro Double-SHA256).
+Auf ESP32-D0WD-V3 (Revision 3) läuft dieselbe Firmware mit **~902 kH/s**.
+
+> **Warum langsamer?** ESP32 bis Revision 1.x haben einen Hardwarefehler (Espressif-Errata 3.10):
+> Liest ein Kern ein DPORT-Register (dort liegt der SHA-Beschleuniger), während der andere Kern
+> APB-Register liest, bekommt der andere Kern falsche Daten. Folge: `wifi assert` und
+> Watchdog-Neustart direkt nach Mining-Beginn. Die Firmware erkennt die Chip-Revision beim Start und
+> liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF. Das kostet ~13 %, läuft aber stabil.
+
+🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitV1  
+🔗 **Hauptprojekt (USB-C, Rev. 3):** https://github.com/brenner23/ESPressMiner32
 
 > ⚠️ **Hobbyprojekt.** Mit einem ESP32 findet man realistisch keinen Bitcoin-Block. Es geht ums Lernen,
 > Basteln und Ausreizen der Hardware. Ideal für Solo-Pools, Lotterie-Mining oder den eigenen Test-Pool.
@@ -17,13 +33,13 @@ Gemessen auf ESP32-D0WD-V3 @ 240 MHz: **~902 kH/s** (265 Takte pro Double-SHA256
 
 ## Funktionen
 
-- **~902 kH/s** auf einem klassischen ESP32 (Hardware-SHA, kalibrierte Pipeline)
+- **~786 kH/s** auf ESP32 Rev. 1.0, **~902 kH/s** auf Rev. 3 (Hardware-SHA, kalibrierte Pipeline, Revision wird automatisch erkannt)
 - **Selbsttest** beim Start (Genesis-Block, 2000 Zufalls-Header, 5000 Nonces). Schlägt er fehl, wird nicht gemint.
 - **Jeder Treffer wird in Software nachgerechnet**, bevor ein Share zum Pool geht
 - **Web-Dashboard** unter `http://espressminer.local/` mit Hashrate-Verlauf, JSON unter `/api/stats`
 - **Primary- und Secondary-Pool** mit automatischem Wechsel
 - **Einrichtung ohne Programmieren:** WLAN-Portal, Setup-Programm mit Oberfläche oder Kommandozeile
-- **Blaue LED (GPIO2)** leuchtet beim Minen und blinkt bei jedem Share
+- **Optionale LED an GPIO13** leuchtet beim Minen und blinkt bei jedem Share
 
 ## Projektstruktur
 

@@ -93,8 +93,11 @@ bool selftest_calibrate()
 
     // Jede Phase einzeln: kleinsten Wert suchen, dann mit Reserve festhalten
     static const char* names[3] = { "Block 1", "Block 2", "Hash 2" };
+    // Aeltere Chips: Die geschuetzte Leseroutine verzoegert das Auslesen und laesst
+    // zu kurze Wartezeiten faelschlich fehlerfrei aussehen -> Untergrenze wie bei v3
+    const uint32_t from = hw_sha_dport_fix() ? 58 : 30;
     for (int i = 0; i < 3; i++) {
-        if (!find_min(tm, &tm.block[i], 30, 120, 2)) {
+        if (!find_min(tm, &tm.block[i], from, 120, 2)) {
             Serial.printf("  Keine fehlerfreie Wartezeit fuer %s gefunden\n", names[i]);
             return false;
         }

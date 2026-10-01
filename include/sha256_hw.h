@@ -30,3 +30,6 @@ struct HwTiming {
 
 void     hw_sha_set_timing(const HwTiming& t);
 HwTiming hw_sha_timing();
+
+// true auf ESP32 vor Revision 3 (DPORT-Errata-Workaround beim Lesen aktiv)
+bool     hw_sha_dport_fix();
