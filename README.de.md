@@ -30,6 +30,29 @@ Auf ESP32-D0WD-V3 (Revision 3) läuft dieselbe Firmware mit **~902 kH/s**.
 > Watchdog-Neustart direkt nach Mining-Beginn. Die Firmware erkennt die Chip-Revision beim Start und
 > liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF. Das kostet ~13 %, läuft aber stabil.
 
+### Langzeittest
+
+Ein Board dieser Variante läuft im Dauerbetrieb (Außengehäuse, WLAN über Repeater) am öffentlichen Pool
+hmpool.io. Stand nach **13 h 26 min** ohne Neustart (Oktober 2026):
+
+| | Wert |
+|---|---|
+| Hashrate | **786 kH/s**, konstant (Schnitt 786,1) |
+| Hashes gesamt | 38,0 Mrd. |
+| Shares erwartet (bei Pool-Difficulty 0,01) | 885 |
+| Shares gesendet / angenommen / abgelehnt | 874 / 873 / 0 |
+| Abweichung | **−1,3 %** (bei 885 Shares liegt die statistische Schwankung bei ±3,4 %) |
+| Rechenfehler (vom Dashboard gezählt) | 19 |
+
+**Die angezeigte Hashrate stimmt also mit der Arbeit überein, die tatsächlich beim Pool ankommt.**
+
+**Zu den 19 Rechenfehlern:** Um diese Geschwindigkeit zu erreichen, wird der SHA-Baustein nicht nach
+Datenblatt betrieben (Schreiben, während er rechnet, feste Wartezeiten statt BUSY-Abfrage). Dabei rechnet er
+gelegentlich falsch. Das Dashboard zählt nur die falschen Hashes, die zufällig wie ein Treffer aussehen
+(etwa einer von 65.536). Hochgerechnet sind 19 davon in 13 Stunden **etwa 1 falscher Hash je 30.000, also
+~0,003 %**. Jeder Treffer wird vor dem Senden in Software nachgerechnet, **ein falscher Hash geht nie an den
+Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
+
 🔗 **Projektseite:** https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB  
 🔗 **Hauptprojekt (USB-C, Rev. 3):** https://github.com/brenner23/ESPressMiner32
 
@@ -134,8 +157,8 @@ python tools/espressminer_setup.py --reset         # Einstellungen löschen -> P
 | Software-Pipeline: nächsten Block 1 vor der Kandidatenprüfung starten | **~902** |
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
-schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Rechnet die Hardware im Betrieb falsch (jeder Treffer wird in
-Software nachgeprüft), erhöht sich die Wartezeit automatisch.
+schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete
+Treffer werden bei der Software-Prüfung verworfen und im Dashboard als „verworfen (Rechenfehler)“ gezählt.
 
 Der klassische ESP32 kann keinen SHA-Zwischenstand (Midstate) in die Engine zurückladen. Pro Nonce sind deshalb
 immer drei Hardware-Blöcke nötig.

@@ -30,6 +30,28 @@ On ESP32-D0WD-V3 (revision 3) the same firmware runs at **~902 kH/s**.
 > starts. The firmware detects the chip revision at boot and then reads the SHA buffer using the
 > protected sequence from ESP-IDF. It costs ~13 % but runs stable.
 
+### Long-term test
+
+One board of this variant runs continuously (outdoor enclosure, Wi-Fi via repeater) on the public pool
+hmpool.io. Status after **13 h 26 min** without a restart (October 2026):
+
+| | Value |
+|---|---|
+| Hashrate | **786 kH/s**, constant (average 786.1) |
+| Total hashes | 38.0 billion |
+| Expected shares (pool difficulty 0.01) | 885 |
+| Shares sent / accepted / rejected | 874 / 873 / 0 |
+| Deviation | **−1.3 %** (with 885 shares the statistical spread is ±3.4 %) |
+| Calculation errors (counted by the dashboard) | 19 |
+
+**So the displayed hashrate matches the work that actually arrives at the pool.**
+
+**About the 19 calculation errors:** to reach this speed the SHA block is not driven by the datasheet
+(writing while it computes, fixed wait times instead of polling BUSY), so it occasionally miscalculates.
+The dashboard only counts wrong hashes that happen to look like a hit (about one in 65,536). Scaled up,
+19 in 13 hours means **about 1 wrong hash per 30,000, i.e. ~0.003 %**. Every hit is recomputed in software
+before it is sent, so **a wrong hash never reaches the pool**. There is no measurable effect on earnings.
+
 🔗 **Project page:** https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB  
 🔗 **Main project (USB-C, rev. 3):** https://github.com/brenner23/ESPressMiner32
 
@@ -136,8 +158,9 @@ python tools/espressminer_setup.py --reset         # erase settings -> portal
 | Software pipeline: start the next block 1 before the candidate check | **~902** |
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
-adds `HW_CAL_MARGIN_*` cycles of headroom. If the hardware miscalculates during operation (every hit is
-re-checked in software), the wait time is increased automatically.
+adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are
+discarded by the software check and counted in the dashboard as "verworfen (Rechenfehler)" (discarded,
+calculation error).
 
 The classic ESP32 cannot load a SHA midstate back into the engine, so every nonce always needs three hardware blocks.
 
