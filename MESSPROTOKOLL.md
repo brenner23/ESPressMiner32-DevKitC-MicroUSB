@@ -6,7 +6,16 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | Version | Datum | Schleife | kH/s gesamt | HW / SW | HW-Fehler | Bemerkung |
 |---|---|---|---|---|---|---|
 | 1.0.0 | 2026-10-01 | klassisch + DPORT-Schutz | 786 | – | – | Langzeittest 13 h, Shares −1,3 % |
-| 1.1.0.001 | 2026-10-13 | J + DPORT-Schutz | **951** | 920 / 31 | 0 / 651 Kandidaten | Benchmark 926,5 kH/s, 259 Takte/Hash; 41 °C |
+| 1.1.0.001 | 2026-10-13 | J + DPORT-Schutz | 951 | 920 / 31 | 0 / 5878 Kandidaten | Benchmark 926,5 kH/s, 259 Takte/Hash; 46 °C, 9/9 Shares |
+| 1.1.0.002 | 2026-10-13 | J + DPORT-Schutz, vorbereitet | **962** | 931 / 31 | 0 / 1164 Kandidaten | Benchmark 937,6 kH/s, 255 Takte/Hash; 42 °C |
+
+## 1.1.0.002 – Schutzsequenz teilweise in die LOAD-Wartezeit
+- Neue Variante `hw_t_d_pl1_dfo` (df = 2): `rsil a7, 5` und das Laden der APB-Adresse nach a6 passieren in der
+  Wartezeit pl2 nach dem zweiten LOAD (Engine schreibt T[0..7], CPU wartet sonst mit nop; pl2 um 2 nop gekürzt).
+  Beim Lesen bleiben Dummy-Lesen APB und H7 direkt hintereinander, `mov` entfällt (PS in a7, H7 direkt in a6).
+- Ergebnis: 255 statt 259 Takte/Hash, **+11 kH/s** (962 statt 951), Known-Answer-Test beim ersten Versuch OK, 0 Fehler.
+- Kette auf Rev. 1: dfo → J_df → schnell_df → +2_df → breit_df.
+- Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.002_962khs.zip`.
 
 ## 1.1.0.001 – Stand Master 004 + v2-Schleife mit DPORT-Schutz
 - Code aus `ESPressMiner32 - DevKit USBC Master 004` (v1.3.0.004) übernommen: v2-Schleife (NerdMiner Modded, MIT),

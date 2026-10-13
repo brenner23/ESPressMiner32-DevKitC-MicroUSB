@@ -354,6 +354,7 @@ extern "C" uint32_t hw_v2_fast_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_margin_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_wide_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_pl1_dfo(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 
 static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_fast,   "v2 schnell (247 Takte)" },
@@ -378,13 +379,17 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_fast_df,   "v2 schnell + DPORT-Schutz (Rev. 1)" },
     { hw_v2_margin_df, "v2 +2 Reserve + DPORT-Schutz (Rev. 1)" },
     { hw_v2_wide_df,   "v2 breit + DPORT-Schutz (Rev. 1)" },
+    { hw_t_d_pl1_dfo,  "J + DPORT-Schutz, vorbereitet (Rev. 1)" },
 };
 static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
 // Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
 static const int V2_CHAIN_R3[] = { 11, 0, 1, 2 };
 // Micro-USB: Chips vor Rev. 3 nur Varianten mit geschuetztem H7-Lesen
-static const int V2_CHAIN_DF[] = { 16, 17, 18, 19 };
-static const int V2_COUNT      = 4;
+// 1.1.0.002: zuerst J mit vorbereitetem Schutz, dann J wie 1.1.0.001
+static const int V2_CHAIN_DF[] = { 20, 16, 17, 18, 19 };
+static const int V2_COUNT_DF   = sizeof(V2_CHAIN_DF) / sizeof(V2_CHAIN_DF[0]);
+static const int V2_COUNT_R3   = sizeof(V2_CHAIN_R3) / sizeof(V2_CHAIN_R3[0]);
+static int V2_COUNT            = V2_COUNT_R3;
 static const int* V2_CHAIN     = V2_CHAIN_R3;
 static int s_chainPos = 0;
 static volatile bool s_testMode = false;   // Messbetrieb: keine automatischen Wechsel
@@ -448,6 +453,7 @@ bool hw_sha_select_loop()
     // Rev. 0-2: DPORT-Fehler (lesen ohne Schutz stoert den anderen Kern)
     // -> nur die Varianten mit geschuetztem H7-Lesen (Micro-USB-Variante)
     V2_CHAIN = s_dportFix ? V2_CHAIN_DF : V2_CHAIN_R3;
+    V2_COUNT = s_dportFix ? V2_COUNT_DF : V2_COUNT_R3;
     if (s_dportFix) Serial.println("[HW-SHA] Chip vor Rev. 3 -> v2-Schleifen mit DPORT-Schutz");
     for (int n = 0; n < V2_COUNT; n++) {
         const int v = V2_CHAIN[n];

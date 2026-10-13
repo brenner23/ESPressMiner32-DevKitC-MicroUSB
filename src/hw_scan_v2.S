@@ -79,7 +79,7 @@
     // esp_dport_access_reg_read in ESP-IDF schuetzen: Interrupts bis Level 5 sperren,
     // Dummy-Lesen auf APB (0x3ff40078, steht in ctx), direkt danach das SHA-Register.
     .macro H7READ df
-    .if \df
+    .if \df == 1
     rsil    a6, 5
     l32i    a7, a3, CTX_APB
     l32i    a7, a7, 0
@@ -87,6 +87,11 @@
     wsr     a6, ps
     rsync
     mov.n   a6, a7
+    .elseif \df == 2
+    l32i    a6, a6, 0           // Dummy-Lesen APB (Adresse aus pl2)
+    l16ui   a6, a2, 28
+    wsr     a7, ps              // PS aus pl2
+    rsync
     .else
     l16ui   a6, a2, 28
     .endif
@@ -322,7 +327,15 @@
     COPY    60, 60, \wgap
     NOPS    \p3
     s32i    a6, a2, R_LOAD      // ===== LOAD Digest 2 -> T[0..7] =====
+    .if \df == 2
+    // Micro-USB 1.1.0.002: Interrupts sperren und APB-Adresse holen, waehrend die
+    // Engine T[0..7] beschreibt (kein Zugriff auf SHA-Register, a6/a7 sind frei)
+    rsil    a7, 5
+    l32i    a6, a3, CTX_APB
+    NOPS    \pl2 - 2
+    .else
     NOPS    \pl2
+    .endif
 
     // Engine steht: T[0..7] aus Registern
     HDRR    a5,  0, \lpos, \rgap, \df
@@ -416,6 +429,8 @@
 //  Engine steht, und verlaengert jede Nonce um die Laenge der Schutzsequenz.
 // ---------------------------------------------------------------------------
     PL_MINE_R hw_t_d_pl1_df,   .iram1.hwdf1, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 1
+    // 1.1.0.002: Vorbereitung der Schutzsequenz in der LOAD-Wartezeit (df = 2)
+    PL_MINE_R hw_t_d_pl1_dfo,  .iram1.hwdf5, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 2
     PL_MINE   hw_v2_fast_df,   .iram1.hwdf2, 4, 16, 40, 10, 14, 27, 10, 2, 1, 1
     PL_MINE   hw_v2_margin_df, .iram1.hwdf3, 6, 16, 42, 12, 14, 29, 12, 2, 1, 1
     PL_MINE   hw_v2_wide_df,   .iram1.hwdf4, 18, 16, 54, 24, 14, 41, 24, 2, 1, 1

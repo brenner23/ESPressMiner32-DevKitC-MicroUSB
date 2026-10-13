@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 #define MINER_NAME        "ESPressMiner32"
-#define MINER_VERSION     "1.1.0.001"   // Micro-USB, Schritt 001: Stand Master 004 + v2-Schleife mit DPORT-Schutz (Rev. 1)
+#define MINER_VERSION     "1.1.0.002"   // Micro-USB, Schritt 002: Schutzsequenz teilweise in die LOAD-Wartezeit verlegt
 #define MINER_REPO_URL    "https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB"
 
 // Difficulty, die beim Pool angefragt wird (mining.suggest_difficulty).
