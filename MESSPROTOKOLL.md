@@ -9,6 +9,12 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | 1.1.0.001 | 2026-10-13 | J + DPORT-Schutz | 951 | 920 / 31 | 0 / 5878 Kandidaten | Benchmark 926,5 kH/s, 259 Takte/Hash; 46 °C, 9/9 Shares |
 | 1.1.0.002 | 2026-10-13 | J + DPORT-Schutz, vorbereitet | 962 | 931 / 31 | 0 / 1164 Kandidaten | Benchmark 937,6 kH/s, 255 Takte/Hash; 42 °C |
 | 1.1.0.003 | 2026-10-13 | J + DPORT-Schutz, verschachtelt | **972** | 942 / 31 | 0 / 1773 Kandidaten | Benchmark 948,6 kH/s, 252 Takte/Hash; 43 °C |
+| 1.1.0.004 | 2026-10-13 | + wsr ps im Write-Abstand | 972 | 942 / 31 | 0 | Benchmark 948,8 kH/s, 252 Takte – **kein Gewinn** |
+
+## 1.1.0.004 – auch `wsr ps` in einen Write-Abstand (Versuch, kein Gewinn)
+- Variante `hw_t_d_pl1_dfw` (df = 4): `s32i T1` → APB → H7 → `s32i T2` → `wsr ps` → `s32i T3` → `rsync` → `s32i T4`.
+- Ergebnis: weiterhin 252 Takte/Hash, 972 kH/s. `wsr ps` kostet seine Zeit offenbar unabhängig von der Position
+  (bzw. der folgende Write wartet darauf). → **.003 bleibt die Basis**, .004 nur dokumentiert.
 
 ## 1.1.0.003 – Schutzsequenz mit den Header-Writes verschachtelt
 - Neue Variante `hw_t_d_pl1_dfp` (df = 3): kein `nop` nach dem Write von T[1] vor dem Lesen (der APB-Zugriff

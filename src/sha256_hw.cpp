@@ -356,6 +356,7 @@ extern "C" uint32_t hw_v2_wide_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfo(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfp(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_pl1_dfw(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 
 static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_fast,   "v2 schnell (247 Takte)" },
@@ -382,13 +383,14 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_wide_df,   "v2 breit + DPORT-Schutz (Rev. 1)" },
     { hw_t_d_pl1_dfo,  "J + DPORT-Schutz, vorbereitet (Rev. 1)" },
     { hw_t_d_pl1_dfp,  "J + DPORT-Schutz, verschachtelt (Rev. 1)" },
+    { hw_t_d_pl1_dfw,  "J + DPORT-Schutz, verschachtelt + wsr (Rev. 1)" },
 };
 static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
 // Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
 static const int V2_CHAIN_R3[] = { 11, 0, 1, 2 };
 // Micro-USB: Chips vor Rev. 3 nur Varianten mit geschuetztem H7-Lesen
 // 1.1.0.002: J mit vorbereitetem Schutz, 1.1.0.003: zusaetzlich verschachtelt (zuerst)
-static const int V2_CHAIN_DF[] = { 21, 20, 16, 17, 18, 19 };
+static const int V2_CHAIN_DF[] = { 22, 21, 20, 16, 17, 18, 19 };   // 1.1.0.004: dfw zuerst
 static const int V2_COUNT_DF   = sizeof(V2_CHAIN_DF) / sizeof(V2_CHAIN_DF[0]);
 static const int V2_COUNT_R3   = sizeof(V2_CHAIN_R3) / sizeof(V2_CHAIN_R3[0]);
 static int V2_COUNT            = V2_COUNT_R3;

@@ -4,7 +4,7 @@
 // ---------------------------------------------------------------------------
 
 #define MINER_NAME        "ESPressMiner32"
-#define MINER_VERSION     "1.1.0.003"   // Micro-USB, Schritt 003: kein nop vor dem Lesen, rsync im Write-Abstand
+#define MINER_VERSION     "1.1.0.004"   // Micro-USB, Schritt 004: auch wsr ps im Write-Abstand
 #define MINER_REPO_URL    "https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB"
 
 // Difficulty, die beim Pool angefragt wird (mining.suggest_difficulty).
