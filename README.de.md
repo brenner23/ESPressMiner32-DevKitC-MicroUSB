@@ -21,12 +21,12 @@ mit optionaler externer **LED an GPIO13**.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
 
-Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.002: ~962 kH/s** (Hardware 931 + Software-Miner 31,
-255 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+22 %**.
+Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.003: ~972 kH/s** (Hardware 942 + Software-Miner 31,
+252 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+24 %**.
 Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.001.png" alt="Dashboard v1.1.0.001 auf ESP32 Rev. 1.0" width="720"><br>
-<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.001 – Pool, Worker, WLAN und IP geschwärzt.
+<p align="center"><img src="docs/dashboard_v1.1.0.003.png" alt="Dashboard v1.1.0.003 auf ESP32 Rev. 1.0" width="720"><br>
+<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.003 – Pool, Worker, WLAN und IP geschwärzt.
 Konsolen-Ausgabe beim Start (Chip-Revision, Selbsttest, Benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
 > **Der Rev.-1-Fehler:** ESP32 bis Revision 1.x haben einen Hardwarefehler (Espressif-Errata 3.10):
@@ -73,7 +73,7 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 ## Funktionen
 
-- **~962 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.002), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
+- **~972 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.003), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
 - **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
 - **Software-Miner auf Core 0** zusätzlich (~31 kH/s)
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
@@ -182,7 +182,8 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 |---|---|
 | v1.0.0: kalibrierte Pipeline, jedes Lesen geschützt | 786 |
 | v1.1.0.001: Variante J, nur das H7-Lesen geschützt | ~950 |
-| **v1.1.0.002: Schutz in der LOAD-Wartezeit vorbereitet** | **~962** |
+| v1.1.0.002: Schutz in der LOAD-Wartezeit vorbereitet | ~962 |
+| **v1.1.0.003: Schutz mit den Header-Writes verschachtelt** | **~972** |
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete

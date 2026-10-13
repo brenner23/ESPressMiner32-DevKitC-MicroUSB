@@ -92,6 +92,10 @@
     l16ui   a6, a2, 28
     wsr     a7, ps              // PS aus pl2
     rsync
+    .elseif \df == 3
+    l32i    a6, a6, 0           // Dummy-Lesen APB (Adresse aus pl2)
+    l16ui   a6, a2, 28
+    wsr     a7, ps              // PS aus pl2, rsync folgt nach dem naechsten Write
     .else
     l16ui   a6, a2, 28
     .endif
@@ -266,9 +270,16 @@
 
     .macro HDRR reg, k, lpos, rgap, df
     s32i.n  \reg, a2, \k * 4
+    .if \df == 3 && \lpos == \k + 1
+    H7READ  3
+    .elseif \df == 3 && \lpos == \k
+    rsync                       // 1.1.0.003: Interrupts wieder frei, zaehlt als Abstand
+    NOPS    \rgap - 1
+    .else
     NOPS    \rgap
     .if \lpos == \k + 1
     H7READ  \df
+    .endif
     .endif
     .endm
 
@@ -327,7 +338,7 @@
     COPY    60, 60, \wgap
     NOPS    \p3
     s32i    a6, a2, R_LOAD      // ===== LOAD Digest 2 -> T[0..7] =====
-    .if \df == 2
+    .if \df >= 2
     // Micro-USB 1.1.0.002: Interrupts sperren und APB-Adresse holen, waehrend die
     // Engine T[0..7] beschreibt (kein Zugriff auf SHA-Register, a6/a7 sind frei)
     rsil    a7, 5
@@ -431,6 +442,8 @@
     PL_MINE_R hw_t_d_pl1_df,   .iram1.hwdf1, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 1
     // 1.1.0.002: Vorbereitung der Schutzsequenz in der LOAD-Wartezeit (df = 2)
     PL_MINE_R hw_t_d_pl1_dfo,  .iram1.hwdf5, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 2
+    // 1.1.0.003: + kein nop vor dem Lesen, rsync im Abstand nach dem naechsten Write (df = 3)
+    PL_MINE_R hw_t_d_pl1_dfp,  .iram1.hwdf6, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 3
     PL_MINE   hw_v2_fast_df,   .iram1.hwdf2, 4, 16, 40, 10, 14, 27, 10, 2, 1, 1
     PL_MINE   hw_v2_margin_df, .iram1.hwdf3, 6, 16, 42, 12, 14, 29, 12, 2, 1, 1
     PL_MINE   hw_v2_wide_df,   .iram1.hwdf4, 18, 16, 54, 24, 14, 41, 24, 2, 1, 1

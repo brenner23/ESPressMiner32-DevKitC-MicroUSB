@@ -21,12 +21,12 @@ with an optional external **LED on GPIO13**.
 > Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
 > Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
 
-Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.002: ~962 kH/s** (hardware 931 + software miner 31,
-255 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+22 %**.
+Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.003: ~972 kH/s** (hardware 942 + software miner 31,
+252 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+24 %**.
 On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.001.png" alt="Dashboard v1.1.0.001 on ESP32 rev. 1.0" width="720"><br>
-<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.001 – pool, worker, Wi-Fi and IP redacted.
+<p align="center"><img src="docs/dashboard_v1.1.0.003.png" alt="Dashboard v1.1.0.003 on ESP32 rev. 1.0" width="720"><br>
+<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.003 – pool, worker, Wi-Fi and IP redacted.
 Console output at boot (chip revision, self-test, benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
 > **The rev. 1 bug:** ESP32 up to revision 1.x has a silicon bug (Espressif errata 3.10): when one core
@@ -73,7 +73,7 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 
 ## Features
 
-- **~962 kH/s** on ESP32 rev. 1.0 (v1.1.0.002), rev. 3 runs faster without protection – revision detected automatically
+- **~972 kH/s** on ESP32 rev. 1.0 (v1.1.0.003), rev. 3 runs faster without protection – revision detected automatically
 - **Hash loop v2** in assembly (ported from NerdMiner Modded), chosen by a known-answer test with fallback stages
 - **Software miner on core 0** in addition (~31 kH/s)
 - **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
@@ -182,7 +182,8 @@ The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
 |---|---|
 | v1.0.0: calibrated pipeline, every read protected | 786 |
 | v1.1.0.001: variant J, only the H7 read protected | ~950 |
-| **v1.1.0.002: protection prepared during the LOAD wait** | **~962** |
+| v1.1.0.002: protection prepared during the LOAD wait | ~962 |
+| **v1.1.0.003: protection interleaved with the header writes** | **~972** |
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are

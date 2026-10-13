@@ -3,6 +3,11 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.003 (2026-10-13) – Schutzsequenz verschachtelt, ~972 kH/s
+- Neue Variante „J + DPORT-Schutz, verschachtelt“: kein `nop` mehr vor dem geschützten Lesen (der APB-Zugriff
+  sorgt selbst für den Abstand zwischen den SHA-Writes), `rsync` sitzt in der Pause nach dem nächsten Write.
+- Gemessen: 252 statt 255 Takte/Hash, Benchmark 948,6 kH/s, Betrieb **~972 kH/s** (HW 942 + SW 31), 0 Rechenfehler.
+
 ## v1.1.0.002 (2026-10-13) – Schutzsequenz vorbereitet, ~962 kH/s
 - Neue Variante „J + DPORT-Schutz, vorbereitet“: Interrupt-Sperre (`rsil`) und APB-Adresse werden schon in der
   Wartezeit nach dem LOAD vorbereitet, in der die CPU sonst nur `nop` ausführt. Dummy-Lesen und H7-Lesen bleiben

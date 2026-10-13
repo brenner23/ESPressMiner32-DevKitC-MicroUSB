@@ -7,7 +7,16 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 |---|---|---|---|---|---|---|
 | 1.0.0 | 2026-10-01 | klassisch + DPORT-Schutz | 786 | – | – | Langzeittest 13 h, Shares −1,3 % |
 | 1.1.0.001 | 2026-10-13 | J + DPORT-Schutz | 951 | 920 / 31 | 0 / 5878 Kandidaten | Benchmark 926,5 kH/s, 259 Takte/Hash; 46 °C, 9/9 Shares |
-| 1.1.0.002 | 2026-10-13 | J + DPORT-Schutz, vorbereitet | **962** | 931 / 31 | 0 / 1164 Kandidaten | Benchmark 937,6 kH/s, 255 Takte/Hash; 42 °C |
+| 1.1.0.002 | 2026-10-13 | J + DPORT-Schutz, vorbereitet | 962 | 931 / 31 | 0 / 1164 Kandidaten | Benchmark 937,6 kH/s, 255 Takte/Hash; 42 °C |
+| 1.1.0.003 | 2026-10-13 | J + DPORT-Schutz, verschachtelt | **972** | 942 / 31 | 0 / 1773 Kandidaten | Benchmark 948,6 kH/s, 252 Takte/Hash; 43 °C |
+
+## 1.1.0.003 – Schutzsequenz mit den Header-Writes verschachtelt
+- Neue Variante `hw_t_d_pl1_dfp` (df = 3): kein `nop` nach dem Write von T[1] vor dem Lesen (der APB-Zugriff
+  hält den Abstand zum nächsten Write ohnehin ein), `rsync` steht im Abstand nach dem Write von T[2] statt eines `nop`.
+  Ablauf: `s32i T1` → `l32i APB` → `l16ui H7` → `wsr ps` → `s32i T2` → `rsync` → `s32i T3` …
+- Ergebnis: 252 statt 255 Takte/Hash (3 gespart, erwartet 2), **+10 kH/s** (972 statt 962), 0 Fehler.
+- Kette auf Rev. 1: dfp → dfo → J_df → schnell_df → +2_df → breit_df.
+- Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.003_972khs.zip`.
 
 ## 1.1.0.002 – Schutzsequenz teilweise in die LOAD-Wartezeit
 - Neue Variante `hw_t_d_pl1_dfo` (df = 2): `rsil a7, 5` und das Laden der APB-Adresse nach a6 passieren in der
