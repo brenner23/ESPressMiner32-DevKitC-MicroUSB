@@ -1,0 +1,51 @@
+ESPressMiner32 v1.1.0.001 - Konsole (115200 Baud) des Testboards ESP32-D0WDQ6 Rev. 1.0, 2026-10-13
+WLAN, Pool-Adresse und IP geschwaerzt.
+
+==============================================
+  Reset-Grund: Software
+==============================================
+CPU 240 MHz, freier Heap 262920 Bytes
+[HW-SHA] Beschleuniger reserviert
+[HW-SHA] Chip-Revision v1.0 -> DPORT-Workaround aktiv (aeltere ESP32)
+[Hash-Schleife]
+[HW-SHA] Chip vor Rev. 3 -> v2-Schleifen mit DPORT-Schutz
+  Schleife J + DPORT-Schutz (Rev. 1)      Known-Answer-Test OK (283 ms)
+[HW-SHA] aktiv: J + DPORT-Schutz (Rev. 1)
+[Selbsttest]
+  Software SHA256d (Genesis)             OK
+  Hardware SHA256d (Genesis)             OK
+  Software-Scan findet Genesis-Nonce     OK
+  Hardware-Scan findet Genesis-Nonce     OK
+  HW == SW (2000 Zufalls-Header, 0 Fehler) OK
+  HW-Pipeline 5000 Nonces (0 Fehler)     OK
+[Benchmark] Hardware: 926.5 kH/s (259 Takte/Hash) | Software: 32.7 kH/s
+[WiFi] Verbinde mit "████████" .....[Web] Dashboard: http://███.███.█.███/  bzw.  http://espressminer.local/
+.
+[WiFi] Verbunden, IP ███.███.█.███, RSSI -57 dBm
+[Stratum] Primary Pool: stratum+tcp://███.███.█.███:3333
+[Stratum] Verbinde mit ███.███.█.███:3333 ...
+[Stratum] Subscribed: extranonce1=████████, extranonce2_size=4
+[Stratum] Autorisierung OK
+[Stratum] Neue Pool-Difficulty: 0.010000
+[00:00:05]   898.9 kH/s (HW  870.0 | SW  28.9) avg   898.9 | Shares(R/A) 0/0/100.0% | Best 0.001977 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:10]   950.8 kH/s (HW  920.4 | SW  30.4) avg   924.9 | Shares(R/A) 0/0/100.0% | Best 0.001977 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:15]   951.3 kH/s (HW  920.4 | SW  30.9) avg   933.7 | Shares(R/A) 0/0/100.0% | Best 0.001977 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:20]   951.3 kH/s (HW  920.4 | SW  30.9) avg   938.1 | Shares(R/A) 0/0/100.0% | Best 0.001977 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:25]   949.6 kH/s (HW  918.8 | SW  30.9) avg   940.4 | Shares(R/A) 0/0/100.0% | Best 0.002357 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:30]   951.3 kH/s (HW  920.4 | SW  30.9) avg   942.2 | Shares(R/A) 0/0/100.0% | Best 0.002357 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:35]   951.3 kH/s (HW  920.4 | SW  30.9) avg   943.5 | Shares(R/A) 0/0/100.0% | Best 0.002357 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:40]   949.6 kH/s (HW  918.8 | SW  30.9) avg   944.3 | Shares(R/A) 0/0/100.0% | Best 0.002357 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:45]   951.0 kH/s (HW  920.4 | SW  30.7) avg   945.0 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:50]   949.6 kH/s (HW  918.8 | SW  30.9) avg   945.5 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:00:55]   951.3 kH/s (HW  920.4 | SW  30.9) avg   946.0 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:00]   951.0 kH/s (HW  920.4 | SW  30.7) avg   946.4 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+           ESPressMiner32 v1.1.0.001  | HW-Schleife: J + DPORT-Schutz (Rev. 1) | Chip 41.7 C (grob)
+[00:01:05]   948.8 kH/s (HW  918.8 | SW  30.0) avg   946.6 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:10]   950.8 kH/s (HW  920.4 | SW  30.4) avg   946.9 | Shares(R/A) 0/0/100.0% | Best 0.004306 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:15]   949.4 kH/s (HW  918.8 | SW  30.7) avg   947.1 | Shares(R/A) 0/0/100.0% | Best 0.009517 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[Stratum] Share akzeptiert
+[00:01:20]   951.0 kH/s (HW  920.4 | SW  30.7) avg   947.3 | Shares(R/A) 0/1/100.0% | Best 0.016598 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:25]   949.2 kH/s (HW  918.8 | SW  30.4) avg   947.4 | Shares(R/A) 0/1/100.0% | Best 0.016598 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:30]   951.0 kH/s (HW  920.4 | SW  30.7) avg   947.6 | Shares(R/A) 0/1/100.0% | Best 0.016598 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:35]   949.4 kH/s (HW  918.8 | SW  30.7) avg   947.7 | Shares(R/A) 0/1/100.0% | Best 0.016598 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK
+[00:01:40]   951.0 kH/s (HW  920.4 | SW  30.7) avg   947.9 | Shares(R/A) 0/1/100.0% | Best 0.016598 | Pool-Diff 0.010000 | Net 75.00 | WiFi Pool OK

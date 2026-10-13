@@ -21,16 +21,26 @@ mit optionaler externer **LED an GPIO13**.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
 
-Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz: **~786 kH/s** (304 Takte pro Double-SHA256).
-Auf ESP32-D0WD-V3 (Revision 3) läuft dieselbe Firmware mit **~902 kH/s**.
+Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.001: ~950 kH/s** (Hardware 920 + Software-Miner 31,
+259 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+21 %**.
+Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
 
-> **Warum langsamer?** ESP32 bis Revision 1.x haben einen Hardwarefehler (Espressif-Errata 3.10):
+<p align="center"><img src="docs/dashboard_v1.1.0.001.png" alt="Dashboard v1.1.0.001 auf ESP32 Rev. 1.0" width="720"><br>
+<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.001 – Pool, Worker, WLAN und IP geschwärzt.
+Konsolen-Ausgabe beim Start (Chip-Revision, Selbsttest, Benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
+
+> **Der Rev.-1-Fehler:** ESP32 bis Revision 1.x haben einen Hardwarefehler (Espressif-Errata 3.10):
 > Liest ein Kern ein DPORT-Register (dort liegt der SHA-Beschleuniger), während der andere Kern
 > APB-Register liest, bekommt der andere Kern falsche Daten. Folge: `wifi assert` und
 > Watchdog-Neustart direkt nach Mining-Beginn. Die Firmware erkennt die Chip-Revision beim Start und
-> liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF. Das kostet ~13 %, läuft aber stabil.
+> liest den SHA-Puffer dann mit der geschützten Sequenz aus ESP-IDF (Interrupts sperren → Dummy-Lesen auf APB →
+> SHA-Register lesen).
+>
+> **Neu in v1.1.0.001:** Die schnelle Hash-Schleife v2 (aus NerdMiner Modded) liest pro Nonce nur **ein** Wort (H7)
+> aus dem SHA-Puffer. Das Hauptprojekt schaltet sie auf alten Chips trotzdem ab. Hier gibt es eigene Varianten, die
+> genau dieses eine Lesen schützen. Kosten: ~19 Takte pro Hash (259 statt 240) statt ~13 % wie in v1.0.0.
 
-### Langzeittest
+### Langzeittest (v1.0.0)
 
 Ein Board dieser Variante läuft im Dauerbetrieb (Außengehäuse, WLAN über Repeater) am öffentlichen Pool
 hmpool.io. Stand nach **13 h 26 min** ohne Neustart (Oktober 2026):
@@ -63,7 +73,10 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 ## Funktionen
 
-- **~786 kH/s** auf ESP32 Rev. 1.0, **~902 kH/s** auf Rev. 3 (Hardware-SHA, kalibrierte Pipeline, Revision wird automatisch erkannt)
+- **~950 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.001), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
+- **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
+- **Software-Miner auf Core 0** zusätzlich (~31 kH/s)
+- **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
 - **Selbsttest** beim Start (Genesis-Block, 2000 Zufalls-Header, 5000 Nonces). Schlägt er fehl, wird nicht gemint.
 - **Jeder Treffer wird in Software nachgerechnet**, bevor ein Share zum Pool geht
 - **Web-Dashboard** unter `http://espressminer.local/` mit Hashrate-Verlauf, JSON unter `/api/stats`
@@ -79,12 +92,16 @@ ESPressMiner32/
 ├── include/
 │   ├── credentials.h         Startwerte (leer, optional)
 │   ├── config.h              Difficulty, Cores, LED, Nonce-Bereiche
-│   ├── sha256_hw.h           Hardware-SHA-Pipeline
+│   ├── sha256_hw.h           Hardware-SHA-Pipeline, Auswahl der Hash-Schleife
 │   ├── sha256_sw.h           Software-SHA-256 (Coinbase, Merkle, Prüfung)
 │   ├── stratum_client.h      Stratum-V1-Client
 │   ├── mining_job.h          Job-/Share-Austausch zwischen den Tasks
 │   └── ...
 ├── src/                      Implementierungen zu den Headern + main.cpp
+│   ├── hw_scan_v2.S          Hash-Schleife v2 (NerdMiner Modded, MIT) + Varianten J und *_df (Rev. 1)
+│   └── sha256_hw.cpp         Treiber, Errata-3.10-Schutz, Known-Answer-Test, Laufzeit-Kontrolle
+├── CHANGELOG.md              Versionen
+├── MESSPROTOKOLL.md          Messwerte je Schritt
 ├── tools/                    Setup per USB: espressminer_setup_gui.py (Oberfläche), espressminer_setup.py
 └── test/hw_probe/            Messprogramm für den SHA-Beschleuniger (Entwicklung)
 ```
@@ -154,7 +171,17 @@ python tools/espressminer_setup.py --reset         # Einstellungen löschen -> P
 | Feste Wartezeiten statt BUSY (das Flag hängt ~34 Takte nach) | ~800 |
 | Kein `memw` nach LOAD | ~833 |
 | Wartezeit je Phase einzeln kalibriert | ~842 |
-| Software-Pipeline: nächsten Block 1 vor der Kandidatenprüfung starten | **~902** |
+| Software-Pipeline: nächsten Block 1 vor der Kandidatenprüfung starten | ~902 |
+| Hash-Schleife v2 aus NerdMiner Modded (gezählte Wartezeiten, Writes ≥ 3 Takte auseinander) | ~963 |
+| + Software-Miner auf Core 0 (stört v2 nicht mehr) | ~990 |
+| Variante J: Header-Wörter in Registern, Write-Abstand 2 Takte | ~1019 |
+
+Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Variante):
+
+| Stand | kH/s |
+|---|---|
+| v1.0.0: kalibrierte Pipeline, jedes Lesen geschützt | 786 |
+| **v1.1.0.001: Variante J, nur das H7-Lesen geschützt** | **~950** |
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete
@@ -173,3 +200,11 @@ Entwickelt mit Unterstützung von [Claude](https://claude.ai) (Anthropic) als KI
 
 [MIT](LICENSE) © 2026 brenner23. Nutzung auf eigene Verantwortung.
 Danksagungen und Bibliotheken: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+**Verwendet / Quellen:**
+- **NerdMiner Modded** (MIT, HenrysCat) – https://github.com/HenrysCat/NerdMiner-Modded –
+  `src/hw_scan_v2.S` ist ein Port von deren `pipelined_hw_sha_classic_v2.S`, dazu die Idee von Known-Answer-Test
+  und Rückfallstufen. Lizenztext in THIRD_PARTY_LICENSES.md. Upstream: NerdMiner_v2 (MIT, BitMaker-hub).
+- **SparkMiner** (MIT, BitzyLabs) – https://github.com/BitzyLabs/sparkminer – nur die Idee gepufferter Register-Writes.
+- **Espressif** – ESP32 Errata 3.10 und ESP-IDF `esp_dport_access_reg_read` (Apache-2.0) – Lesesequenz nachgebaut, kein Code kopiert.
+- Eigene Arbeit: Pipeline, Kalibrierung, Variante J, geschützte `*_df`-Schleifen, Dashboard, Setup-Werkzeuge.

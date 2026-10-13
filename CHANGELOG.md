@@ -1,0 +1,38 @@
+# ESPressMiner32 Micro-USB – Versionen / Changelog
+
+Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
+Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
+
+## v1.1.0.001 (2026-10-13) – schnelle Hash-Schleife jetzt auch auf Rev. 1.0, ~950 kH/s
+- Stand des Hauptprojekts übernommen (v1.2.1 + eigene Weiterentwicklung „Master 004“):
+  - Hash-Schleife **v2** (`src/hw_scan_v2.S`), portiert aus **NerdMiner Modded** (MIT, HenrysCat,
+    https://github.com/HenrysCat/NerdMiner-Modded), Variante **„J“**: Header-Wörter 0..7 dauerhaft in Registern,
+    Abstand 2 Takte zwischen den Register-Writes (Master 004, 240 Takte auf Rev. 3).
+  - Auswahl beim Start per Known-Answer-Test (262 144 Nonces, 6 bekannte Treffer), Rückfallkette, Laufzeit-Kontrolle
+    (≥ 8 von 256 Kandidaten unbestätigt → vorsichtigere Stufe).
+  - Software-Miner auf Core 0 wieder an (+~31 kH/s).
+  - Chip-Temperatur im Dashboard, Überhitzungsschutz (SW-Miner Pause ab 90 °C, Stopp ab 100 °C, weiter unter 80 °C).
+  - Reset-Grund beim Start und in `/api/stats`, Projekt-Kennung jede Minute auf der Konsole.
+- **Neu in dieser Variante:** Die v2-Schleifen lesen H7 direkt aus dem SHA-Puffer (DPORT). Auf Rev. 0/1 löst das
+  den Errata-3.10-Fehler aus (`wifi assert`, Watchdog) – deshalb nimmt das Hauptprojekt dort die alte Schleife.
+  Hier bekommen Rev.-0/1-Chips eigene Varianten `*_df`, die H7 mit der geschützten Sequenz lesen
+  (Interrupts bis Level 5 sperren → Dummy-Lesen APB `0x3ff40078` → H7 lesen → Interrupts frei),
+  nachgebaut nach `esp_dport_access_reg_read` aus ESP-IDF. Kette auf Rev. 1: J_df → schnell_df → +2_df → breit_df.
+  Rev.-3-Chips laufen unverändert ohne Schutz.
+- Gemessen: Benchmark **926,5 kH/s** HW (259 Takte/Hash), im Betrieb **~950 kH/s** (HW 920 + SW 31),
+  0 Rechenfehler, Shares angenommen. Vorher (v1.0.0): 786 kH/s → **+21 %**.
+- Partitionstabelle `huge_app` (3 MB App): Beim Umstieg von v1.0.0 **Bootloader + Partitionen mitflashen**
+  (`pio run -t upload` macht das automatisch). Beim Testboard waren die gespeicherten Einstellungen danach weg
+  → Einrichtung neu über das Portal.
+
+## v1.0.0 (2026-10-01) – erste Micro-USB-Variante, 786 kH/s
+- Abzweig vom Hauptprojekt (Stand vor v1.1.0): optionale LED an GPIO13, Errata-3.10-Workaround beim Lesen
+  der SHA-Register (Revision wird beim Start erkannt), Kalibrierungs-Untergrenze 58 Takte auf alten Chips.
+- Langzeittest 13 h 26 min am Pool hmpool.io: 786 kH/s konstant, Shares −1,3 % zur Erwartung.
+
+## Quellen / Sources
+- NerdMiner Modded (MIT) – https://github.com/HenrysCat/NerdMiner-Modded – Hash-Schleife v2
+- NerdMiner_v2 (MIT) – https://github.com/BitMaker-hub/NerdMiner_v2 (Upstream von NerdMiner Modded)
+- SparkMiner (MIT) – https://github.com/BitzyLabs/sparkminer – Idee gepufferter Register-Writes
+- Espressif ESP32 Errata 3.10 / ESP-IDF (Apache-2.0) – geschützte DPORT-Lesesequenz (nachgebaut)
+- Details und Lizenztexte: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)

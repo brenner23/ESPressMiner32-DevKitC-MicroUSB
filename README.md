@@ -21,16 +21,25 @@ with an optional external **LED on GPIO13**.
 > Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
 > Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
 
-Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz: **~786 kH/s** (304 cycles per double SHA-256).
-On ESP32-D0WD-V3 (revision 3) the same firmware runs at **~902 kH/s**.
+Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.001: ~950 kH/s** (hardware 920 + software miner 31,
+259 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+21 %**.
+On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
 
-> **Why slower?** ESP32 up to revision 1.x has a silicon bug (Espressif errata 3.10): when one core
+<p align="center"><img src="docs/dashboard_v1.1.0.001.png" alt="Dashboard v1.1.0.001 on ESP32 rev. 1.0" width="720"><br>
+<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.001 – pool, worker, Wi-Fi and IP redacted.
+Console output at boot (chip revision, self-test, benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
+
+> **The rev. 1 bug:** ESP32 up to revision 1.x has a silicon bug (Espressif errata 3.10): when one core
 > reads a DPORT register (where the SHA accelerator lives) while the other core reads APB registers,
 > the other core can get corrupted data. Result: `wifi assert` and a watchdog reset right after mining
 > starts. The firmware detects the chip revision at boot and then reads the SHA buffer using the
-> protected sequence from ESP-IDF. It costs ~13 % but runs stable.
+> protected sequence from ESP-IDF (raise interrupt level → dummy APB read → read the SHA register).
+>
+> **New in v1.1.0.001:** the fast v2 hash loop (from NerdMiner Modded) reads only **one** word (H7) from the SHA
+> buffer per nonce. The main project still disables it on old chips; here dedicated variants protect exactly that
+> one read. Cost: ~19 cycles per hash (259 instead of 240) instead of ~13 % as in v1.0.0.
 
-### Long-term test
+### Long-term test (v1.0.0)
 
 One board of this variant runs continuously (outdoor enclosure, Wi-Fi via repeater) on the public pool
 hmpool.io. Status after **13 h 26 min** without a restart (October 2026):
@@ -64,7 +73,10 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 
 ## Features
 
-- **~786 kH/s** on ESP32 rev. 1.0, **~902 kH/s** on rev. 3 (hardware SHA, calibrated pipeline, revision detected automatically)
+- **~950 kH/s** on ESP32 rev. 1.0 (v1.1.0.001), rev. 3 runs faster without protection – revision detected automatically
+- **Hash loop v2** in assembly (ported from NerdMiner Modded), chosen by a known-answer test with fallback stages
+- **Software miner on core 0** in addition (~31 kH/s)
+- **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
 - **Self-test** at boot (genesis block, 2000 random headers, 5000 nonces). If it fails, the miner does not mine.
 - **Every hit is re-checked in software** before a share is sent to the pool
 - **Web dashboard** at `http://espressminer.local/` with hashrate history, JSON at `/api/stats`
@@ -80,12 +92,16 @@ ESPressMiner32/
 ├── include/
 │   ├── credentials.h         Default values (empty, optional)
 │   ├── config.h              Difficulty, cores, LED, nonce ranges
-│   ├── sha256_hw.h           Hardware SHA pipeline
+│   ├── sha256_hw.h           Hardware SHA pipeline, hash loop selection
 │   ├── sha256_sw.h           Software SHA-256 (coinbase, merkle, verification)
 │   ├── stratum_client.h      Stratum V1 client
 │   ├── mining_job.h          Job/share exchange between tasks
 │   └── ...
 ├── src/                      Implementations + main.cpp
+│   ├── hw_scan_v2.S          Hash loop v2 (NerdMiner Modded, MIT) + variants J and *_df (rev. 1)
+│   └── sha256_hw.cpp         Driver, errata 3.10 protection, known-answer test, runtime check
+├── CHANGELOG.md              Versions (German)
+├── MESSPROTOKOLL.md          Measurements per step (German)
 ├── tools/                    USB setup: espressminer_setup_gui.py (GUI), espressminer_setup.py
 └── test/hw_probe/            Measurement firmware for the SHA accelerator (development)
 ```
@@ -155,7 +171,17 @@ python tools/espressminer_setup.py --reset         # erase settings -> portal
 | Fixed wait times instead of BUSY (the flag lags ~34 cycles) | ~800 |
 | No `memw` after LOAD | ~833 |
 | Wait time calibrated per phase | ~842 |
-| Software pipeline: start the next block 1 before the candidate check | **~902** |
+| Software pipeline: start the next block 1 before the candidate check | ~902 |
+| Hash loop v2 from NerdMiner Modded (counted delays, stores ≥ 3 cycles apart) | ~963 |
+| + software miner on core 0 (no longer disturbs v2) | ~990 |
+| Variant J: header words in registers, store spacing 2 cycles | ~1019 |
+
+The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
+
+| Version | kH/s |
+|---|---|
+| v1.0.0: calibrated pipeline, every read protected | 786 |
+| **v1.1.0.001: variant J, only the H7 read protected** | **~950** |
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are
@@ -174,3 +200,11 @@ Developed with the assistance of [Claude](https://claude.ai) (Anthropic) as an A
 
 [MIT](LICENSE) © 2026 brenner23. Use at your own risk.
 Credits and libraries: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+**Used / sources:**
+- **NerdMiner Modded** (MIT, HenrysCat) – https://github.com/HenrysCat/NerdMiner-Modded –
+  `src/hw_scan_v2.S` is a port of their `pipelined_hw_sha_classic_v2.S`, plus the idea of the known-answer test
+  and fallback stages. License text in THIRD_PARTY_LICENSES.md. Upstream: NerdMiner_v2 (MIT, BitMaker-hub).
+- **SparkMiner** (MIT, BitzyLabs) – https://github.com/BitzyLabs/sparkminer – only the idea of buffered register writes.
+- **Espressif** – ESP32 errata 3.10 and ESP-IDF `esp_dport_access_reg_read` (Apache-2.0) – read sequence re-implemented, no code copied.
+- Own work: pipeline, calibration, variant J, protected `*_df` loops, dashboard, setup tools.

@@ -1,4 +1,5 @@
 #include "sha256_hw.h"
+#include "config.h"
 #include "utils.h"
 
 #include <Arduino.h>
@@ -7,7 +8,9 @@
 #include <soc/hwcrypto_reg.h>
 #include <sha/sha_parallel_engine.h>
 #include <xtensa/core-macros.h>
-#include <esp_chip_info.h>
+#include <stddef.h>
+#include <string.h>
+#include <hal/efuse_hal.h>
 
 // Register-Offsets relativ zu SHA_TEXT_BASE (0x3FF03000):
 //   0x00..0x3C Textpuffer T[0..15], 0x90 START, 0x94 CONTINUE, 0x98 LOAD, 0x9C BUSY
@@ -22,6 +25,13 @@
 //  - Kein BUSY-Polling: Das Flag faellt erst ~30 Takte nach dem tatsaechlichen Ende.
 //    Stattdessen feste Wartezeiten je Phase, beim Start kalibriert (selftest.cpp)
 //    Seltene Einzelfehler sind harmlos (Software-Pruefung faengt sie ab).
+//  - Master 002: Gewartet wird mit einer taktgenauen Zero-Overhead-Schleife
+//    (`loopnez` + `nop.n`) statt mit CCOUNT-Abfragen. Das spart pro Wartestelle das
+//    Lesen der Taktuhr und den Ueberschuss der Abfrageschleife (~5 Takte Raster).
+//    Die Wartezeiten zaehlen damit ab dem Ende der Befehle davor, nicht mehr ab
+//    dem Steuerbefehl; die Kalibrierung misst genau diese Werte.
+//    Ausnahme Block 1: Davor laeuft je nach Aufrufer unterschiedlicher Code
+//    (Kandidatenpruefung, Schleifenende), daher zaehlt er weiter ab START per CCOUNT.
 
 // Die Engine liest die Eingabewoerter nacheinander in den ersten Runden ein.
 // Bevor hohe Wortindizes (T[8..15]) ueberschrieben werden, muss sie diese
@@ -30,7 +40,16 @@
 #define HW_TAIL_DELAY 32
 #endif
 
-static HwTiming s_timing = { { 120, 120, 120 }, 40 };
+// Auch T[0..7] liest die Engine erst nach START nach und nach ein. Folgt der
+// erste Block-2-Write direkt auf START, ueberholt er sie (gemessen: falsche Hashes).
+// In der Mining-Schleife liegt die Kandidatenpruefung dazwischen; ueberall sonst
+// (Pipeline-Start, Einzel-Hash) wird so lange gewartet.
+#ifndef HW_START_GUARD
+#define HW_START_GUARD 8
+#endif
+
+static HwTiming s_timing = HW_TIMING_SAFE;
+static uint32_t s_guard = HW_ASM_LOOP_GUARD;
 
 static inline __attribute__((always_inline)) uint32_t* sha_base()
 {
@@ -54,6 +73,7 @@ static inline __attribute__((always_inline)) uint32_t opaque(uint32_t v)
 // bekommen -> WLAN-Treiber "wifi assert" + Watchdog. Abhilfe wie ESP-IDF
 // (esp_dport_access_reg_read): Interrupts bis Level 5 sperren, Dummy-Lesezugriff
 // auf APB, direkt danach das DPORT-Register lesen. Ab Revision 3 nicht noetig.
+#define DPORT_FIX_APB_ADDR 0x3ff40078u
 static bool s_dportFix = false;
 
 static inline __attribute__((always_inline)) uint32_t sha_rd(uint32_t* base, int wordIdx)
@@ -74,12 +94,22 @@ static inline __attribute__((always_inline)) uint32_t sha_rd(uint32_t* base, int
     return val;
 }
 
+// Wartet n Takte (n = 0 erlaubt). Der Schleifenkoerper laeuft ohne Sprungkosten.
+// Ein Interrupt verlaengert die Wartezeit nur - fuer die Engine immer unkritisch.
 static inline __attribute__((always_inline)) uint32_t now() { return XTHAL_GET_CCOUNT(); }
 
 static inline __attribute__((always_inline)) void wait_until(uint32_t start, uint32_t n)
 {
     while (XTHAL_GET_CCOUNT() - start < n) {
     }
+}
+
+static inline __attribute__((always_inline)) void spin(uint32_t n)
+{
+    __asm__ __volatile__("loopnez %0, 1f\n\t"
+                         "nop.n\n"
+                         "1:"
+                         : : "r"(n) : "memory");
 }
 
 void hw_sha_begin()
@@ -90,12 +120,14 @@ void hw_sha_begin()
     if (!esp_sha_try_lock_engine(SHA2_256)) Serial.println("[HW-SHA] SHA256-Engine belegt");
     Serial.println("[HW-SHA] Beschleuniger reserviert");
 
-    esp_chip_info_t ci;
-    esp_chip_info(&ci);
-    s_dportFix = ci.revision < 300;
-    Serial.printf("[HW-SHA] Chip-Revision v%d.%d%s\n", ci.revision / 100, ci.revision % 100,
+    const unsigned major = efuse_hal_get_major_chip_version();
+    const unsigned minor = efuse_hal_get_minor_chip_version();
+    s_dportFix = major < 3;
+    Serial.printf("[HW-SHA] Chip-Revision v%u.%u%s\n", major, minor,
                   s_dportFix ? " -> DPORT-Workaround aktiv (aeltere ESP32)" : "");
 }
+
+bool hw_sha_dport_fix() { return s_dportFix; }
 
 // Vorbedingung/Nachbedingung jeder Nonce: T[8..15] enthaelt b1[8..15].
 static inline __attribute__((always_inline)) void load_block1_tail(uint32_t* T, const uint32_t* b1)
@@ -109,39 +141,37 @@ static inline __attribute__((always_inline)) void load_block1_tail(uint32_t* T, 
 // fuer den naechsten Schritt geschrieben, waehrend der aktuelle Block noch rechnet.
 static inline __attribute__((always_inline)) void hw_double_sha(uint32_t* T, const uint32_t* b1, const uint32_t* b2,
                                                                 uint32_t nonceBE, uint32_t pad, uint32_t zero,
-                                                                uint32_t blk1Cyc, uint32_t blk2Cyc,
-                                                                uint32_t hash2Cyc, uint32_t loadCyc)
+                                                                const HwTiming& tm)
 {
     // Block 1 (Header-Bytes 0..63), T[8..15] ist schon gesetzt
     T[0] = b1[0]; T[1] = b1[1]; T[2] = b1[2]; T[3] = b1[3];
     T[4] = b1[4]; T[5] = b1[5]; T[6] = b1[6]; T[7] = b1[7];
     SHA_CTRL(T, 0x90);
     uint32_t t = now();
+    spin(HW_START_GUARD);
 
     // ... waehrenddessen Block 2 (Header-Bytes 64..79 + Padding, 640 Bit)
     T[0]  = b2[0]; T[1] = b2[1]; T[2] = b2[2]; T[3] = nonceBE;
     T[4]  = pad;  T[5] = zero; T[6] = zero; T[7] = zero;
     T[8]  = zero; T[9] = zero; T[10] = zero; T[11] = zero;
     T[12] = zero; T[13] = zero; T[14] = zero; T[15] = 640;
-    wait_until(t, blk1Cyc);
+    wait_until(t, tm.block[0]);
     SHA_CTRL(T, 0x94);
-    t = now();
 
     // ... waehrenddessen Padding fuer den zweiten Hash (256 Bit); T[9..14] sind bereits 0
-    wait_until(t, HW_TAIL_DELAY);
+    spin(HW_TAIL_DELAY);
     T[8] = pad; T[15] = 256;
-    wait_until(t, blk2Cyc);
+    spin(tm.block[1]);
     SHA_CTRL(T, 0x98);      // Digest -> T[0..7]
-    wait_until(now(), loadCyc);
+    spin(tm.load[0]);
     SHA_CTRL(T, 0x90);
-    t = now();
 
     // ... waehrenddessen Block 1 der naechsten Nonce vorbereiten
-    wait_until(t, HW_TAIL_DELAY);
+    spin(HW_TAIL_DELAY);
     load_block1_tail(T, b1);
-    wait_until(t, hash2Cyc);
+    spin(tm.block[2]);
     SHA_CTRL(T, 0x98);
-    wait_until(now(), loadCyc);
+    spin(tm.load[1]);
     SHA_FENCE();            // LOAD muss angekommen sein, bevor T[7] gelesen wird
 }
 
@@ -153,10 +183,11 @@ void hw_sha256d_header(const uint8_t header[80], uint8_t out[32])
     uint32_t nonceBE = read_be32(header + 76);
 
     uint32_t* T = sha_base();
-    const HwTiming tm = s_timing;
+    // Nur fuer den Selbsttest (Rechenlogik): Die kalibrierten Werte gelten fuer die
+    // Mining-Schleife, nicht fuer diesen anders aufgebauten Pfad -> sichere Werte.
+    const HwTiming tm = HW_TIMING_SAFE;
     load_block1_tail(T, b1);
-    hw_double_sha(T, b1, b2, nonceBE, opaque(0x80000000), opaque(0),
-                  tm.block[0], tm.block[1], tm.block[2], tm.load);
+    hw_double_sha(T, b1, b2, nonceBE, opaque(0x80000000), opaque(0), tm);
 
     for (int i = 0; i < 8; i++) {
         uint32_t v = sha_rd(T, i);
@@ -167,35 +198,35 @@ void hw_sha256d_header(const uint8_t header[80], uint8_t out[32])
     }
 }
 
-// Ein Pipeline-Schritt: Block 1 laeuft bereits (seit *tStart). Rechnet Block 2,
-// Hash 1 und Hash 2, liest H7 und startet SOFORT Block 1 der naechsten Nonce,
-// bevor der Aufrufer die Kandidatenpruefung macht (die dann mit-rechnet).
+// Ein Pipeline-Schritt: Block 1 laeuft bereits. Rechnet Block 2, Hash 1 und
+// Hash 2, liest H7 und startet SOFORT Block 1 der naechsten Nonce, bevor der
+// Aufrufer die Kandidatenpruefung macht (die dann mit-rechnet).
 static inline __attribute__((always_inline))
 uint32_t hw_pipe_step(uint32_t* T, const uint32_t* b1, const uint32_t* b2, uint32_t nonceBE,
-                      uint32_t pad, uint32_t zero, const HwTiming& tm, uint32_t& tStart)
+                      uint32_t pad, uint32_t zero, uint32_t d0, uint32_t d1, uint32_t d2,
+                      uint32_t l1, uint32_t l2,
+                      uint32_t& tStart)
 {
     // Block 2 schreiben, waehrend Block 1 rechnet
     T[0]  = b2[0]; T[1] = b2[1]; T[2] = b2[2]; T[3] = nonceBE;
     T[4]  = pad;  T[5] = zero; T[6] = zero; T[7] = zero;
     T[8]  = zero; T[9] = zero; T[10] = zero; T[11] = zero;
     T[12] = zero; T[13] = zero; T[14] = zero; T[15] = 640;
-    wait_until(tStart, tm.block[0]);
+    wait_until(tStart, d0);
     SHA_CTRL(T, 0x94);
-    uint32_t t = now();
 
-    wait_until(t, HW_TAIL_DELAY);
+    spin(HW_TAIL_DELAY);
     T[8] = pad; T[15] = 256;
-    wait_until(t, tm.block[1]);
+    spin(d1);
     SHA_CTRL(T, 0x98);          // Hash-1-Digest -> T[0..7]
-    wait_until(now(), tm.load);
+    spin(l1);
     SHA_CTRL(T, 0x90);          // Hash 2 starten
-    t = now();
 
-    wait_until(t, HW_TAIL_DELAY);
+    spin(HW_TAIL_DELAY);
     load_block1_tail(T, b1);    // T[8..15] fuer die naechste Nonce wiederherstellen
-    wait_until(t, tm.block[2]);
+    spin(d2);
     SHA_CTRL(T, 0x98);          // Hash-2-Ergebnis -> T[0..7]
-    wait_until(now(), tm.load);
+    spin(l2);
     SHA_FENCE();
     uint32_t h7 = sha_rd(T, 7);
 
@@ -215,42 +246,293 @@ uint32_t hw_pipe_prime(uint32_t* T, const uint32_t* b1)
     T[0] = b1[0]; T[1] = b1[1]; T[2] = b1[2]; T[3] = b1[3];
     T[4] = b1[4]; T[5] = b1[5]; T[6] = b1[6]; T[7] = b1[7];
     SHA_CTRL(T, 0x90);
-    return now();
+    uint32_t t = now();
+    spin(HW_START_GUARD);
+    return t;
 }
 
+// Argumente fuer die Assembler-Schleife (src/hw_scan_asm.S, Offsets dort)
+struct HwScanArgs {
+    const uint32_t* b1;
+    const uint32_t* b2;
+    uint32_t nonce;
+    uint32_t count;
+    uint32_t mask;
+    uint32_t* cands;
+    int32_t  maxCands;
+    int32_t  found;         // Ausgabe
+    uint32_t d0, d1, d2, l1, l2;
+    uint32_t guard;         // Takte zwischen START und erstem Block-2-Write (in der Schleife)
+};
+static_assert(offsetof(HwScanArgs, b1) == 0 && offsetof(HwScanArgs, b2) == 4 &&
+              offsetof(HwScanArgs, nonce) == 8 && offsetof(HwScanArgs, count) == 12 &&
+              offsetof(HwScanArgs, mask) == 16 && offsetof(HwScanArgs, cands) == 20 &&
+              offsetof(HwScanArgs, maxCands) == 24 && offsetof(HwScanArgs, found) == 28 &&
+              offsetof(HwScanArgs, d0) == 32 && offsetof(HwScanArgs, l2) == 48 &&
+              offsetof(HwScanArgs, guard) == 52, "Offsets passen nicht zu hw_scan_asm.S");
+
+extern "C" uint32_t hw_scan_asm(HwScanArgs* a);
+
+#if HW_USE_ASM
+static uint32_t IRAM_ATTR hw_scan_classic(const uint32_t blk1[16], const uint32_t blk2[3],
+                           uint32_t nonce, uint32_t count, uint32_t mask,
+                           uint32_t* cands, int maxCands, int* nCands)
+{
+    HwScanArgs a = { blk1, blk2, nonce, count, mask, cands, maxCands, 0,
+                     s_timing.block[0], s_timing.block[1], s_timing.block[2],
+                     s_timing.load[0], s_timing.load[1], s_guard };
+    uint32_t done = hw_scan_asm(&a);
+    *nCands = a.found;
+    return done;
+}
+#else
 __attribute__((optimize("O3")))
-uint32_t IRAM_ATTR hw_scan(const uint32_t blk1[16], const uint32_t blk2[3],
-                           uint32_t nonce, uint32_t count,
+static uint32_t IRAM_ATTR hw_scan_classic(const uint32_t blk1[16], const uint32_t blk2[3],
+                           uint32_t nonce, uint32_t count, uint32_t mask,
                            uint32_t* cands, int maxCands, int* nCands)
 {
     uint32_t* T = sha_base();
     const uint32_t pad = opaque(0x80000000), zero = opaque(0);
-    const HwTiming tm = s_timing;
+    const uint32_t d0 = s_timing.block[0], d1 = s_timing.block[1];
+    const uint32_t d2 = s_timing.block[2];
+    const uint32_t l1 = s_timing.load[0], l2 = s_timing.load[1];
     int found = 0;
 
     uint32_t tStart = hw_pipe_prime(T, blk1);
     for (uint32_t i = 0; i < count; i++, nonce++) {
-        uint32_t h7 = hw_pipe_step(T, blk1, blk2, __builtin_bswap32(nonce), pad, zero, tm, tStart);
-        if ((h7 & 0xFFFF) == 0 && found < maxCands) cands[found++] = nonce;
+        uint32_t h7 = hw_pipe_step(T, blk1, blk2, nonce, pad, zero, d0, d1, d2, l1, l2, tStart);
+        if ((h7 & mask) == 0 && found < maxCands) cands[found++] = nonce;
     }
     *nCands = found;
     return count;
 }
-
-void hw_scan_h7(const uint32_t blk1[16], const uint32_t blk2[3],
-                uint32_t nonce, uint32_t count, uint32_t* h7)
-{
-    uint32_t* T = sha_base();
-    const uint32_t pad = opaque(0x80000000), zero = opaque(0);
-    const HwTiming tm = s_timing;
-
-    uint32_t tStart = hw_pipe_prime(T, blk1);
-    for (uint32_t i = 0; i < count; i++, nonce++)
-        h7[i] = hw_pipe_step(T, blk1, blk2, __builtin_bswap32(nonce), pad, zero, tm, tStart);
-}
+#endif
 
 void hw_sha_set_timing(const HwTiming& t) { s_timing = t; }
 
 HwTiming hw_sha_timing() { return s_timing; }
 
-bool hw_sha_dport_fix() { return s_dportFix; }
+void hw_sha_set_guard(uint32_t g) { s_guard = g; }
+
+// ---------------------------------------------------------------------------
+//  Master 003: Hash-Schleife v2 (src/hw_scan_v2.S, aus NerdMiner Modded, MIT)
+// ---------------------------------------------------------------------------
+
+// Layout passend zu den CTX_*-Offsets in hw_scan_v2.S
+struct HwV2Ctx {
+    uint32_t hdr[19];       // Header-Woerter 0..18 (Big-Endian-Werte)
+    uint32_t apb;           // Micro-USB: APB-Adresse fuer das Dummy-Lesen (DPORT-Workaround)
+    uint32_t nonce;         // naechstes T[3]-Wort
+    uint32_t budget;        // verbleibende Nonces
+    uint32_t run;           // 0 = sofort aufhoeren
+    uint32_t pad;           // 0x80000000
+};
+static_assert(offsetof(HwV2Ctx, apb) == 76 && offsetof(HwV2Ctx, nonce) == 80 && offsetof(HwV2Ctx, budget) == 84 &&
+              offsetof(HwV2Ctx, run) == 88 && offsetof(HwV2Ctx, pad) == 92,
+              "Offsets passen nicht zu hw_scan_v2.S");
+
+typedef uint32_t (*HwV2Fn)(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_v2_fast(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_v2_margin(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_v2_wide(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+// Master 004: Testvarianten (Messbetrieb, siehe HW_LOOP_TEST)
+extern "C" uint32_t hw_t_quiet(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r3(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r2(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r1(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r2q(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r1q(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_p1(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_p2(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_pl1(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_p3(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_pl2(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_q4(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_n(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+// Micro-USB: dieselben Schleifen mit geschuetztem H7-Lesen fuer Chips vor Rev. 3
+extern "C" uint32_t hw_v2_fast_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_v2_margin_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_v2_wide_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_d_pl1_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+
+static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
+    { hw_v2_fast,   "v2 schnell (247 Takte)" },
+    { hw_v2_margin, "v2 +2 Reserve (257 Takte)" },
+    { hw_v2_wide,   "v2 breite Reserve (317 Takte)" },
+    // ab hier nur im Messbetrieb (nicht Teil der Rueckfallkette)
+    { hw_t_quiet,   "B ruhige Wartezeiten" },
+    { hw_t_r3,      "C Register, Abstand 3" },
+    { hw_t_r2,      "D Register, Abstand 2" },
+    { hw_t_r1,      "E Register, Abstand 1" },
+    { hw_t_r2q,     "F Register, Abstand 2, ruhig" },
+    { hw_t_r1q,     "G Register, Abstand 1, ruhig" },
+    { hw_t_d_p1,    "H D + p1 ruhig" },
+    { hw_t_d_p2,    "I D + p2 ruhig" },
+    { hw_t_d_pl1,   "J Register + pl1 ruhig (241 Takte)" },
+    { hw_t_d_p3,    "K D + p3 ruhig" },
+    { hw_t_d_pl2,   "L D + pl2 ruhig" },
+    { hw_t_d_q4,    "M D + ruhig ausser pl2" },
+    { hw_t_n,       "N D + p2 pl1 p3 ruhig" },
+    // Micro-USB: Chips vor Rev. 3 (Errata 3.10), H7 geschuetzt gelesen
+    { hw_t_d_pl1_df,   "J + DPORT-Schutz (Rev. 1)" },
+    { hw_v2_fast_df,   "v2 schnell + DPORT-Schutz (Rev. 1)" },
+    { hw_v2_margin_df, "v2 +2 Reserve + DPORT-Schutz (Rev. 1)" },
+    { hw_v2_wide_df,   "v2 breit + DPORT-Schutz (Rev. 1)" },
+};
+static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
+// Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
+static const int V2_CHAIN_R3[] = { 11, 0, 1, 2 };
+// Micro-USB: Chips vor Rev. 3 nur Varianten mit geschuetztem H7-Lesen
+static const int V2_CHAIN_DF[] = { 16, 17, 18, 19 };
+static const int V2_COUNT      = 4;
+static const int* V2_CHAIN     = V2_CHAIN_R3;
+static int s_chainPos = 0;
+static volatile bool s_testMode = false;   // Messbetrieb: keine automatischen Wechsel
+static volatile int s_v2Loop = -1;                  // -1 = klassische Schleife (Master 002)
+static volatile int s_v2Switches = 0;
+
+static uint32_t IRAM_ATTR hw_scan_v2(HwV2Fn fn, const uint32_t blk1[16], const uint32_t blk2[3],
+                                     uint32_t nonce, uint32_t count,
+                                     uint32_t* cands, int maxCands, int* nCands)
+{
+    static HwV2Ctx c;      // nur von einem Task gleichzeitig benutzt (HW-Miner bzw. Setup)
+    memcpy(c.hdr, blk1, 64);
+    c.hdr[16] = blk2[0]; c.hdr[17] = blk2[1]; c.hdr[18] = blk2[2];
+    c.nonce = nonce;
+    c.budget = count;
+    c.run = 1;
+    c.pad = 0x80000000u;
+    c.apb = DPORT_FIX_APB_ADDR;
+    int found = 0;
+    while (c.budget > 0 && fn((volatile uint32_t*)SHA_TEXT_BASE, &c)) {
+        if (found < maxCands) cands[found++] = c.nonce - 1;
+    }
+    *nCands = found;
+    return count;
+}
+
+uint32_t IRAM_ATTR hw_scan(const uint32_t blk1[16], const uint32_t blk2[3],
+                           uint32_t nonce, uint32_t count, uint32_t mask,
+                           uint32_t* cands, int maxCands, int* nCands)
+{
+    // v2 prueft fest die unteren 16 Bit; andere Masken (Kalibrierung/Selbsttest
+    // der klassischen Schleife) laufen ueber die klassische Schleife.
+    const int sel = s_v2Loop;
+    if (sel >= 0 && mask == HW_CAND_MASK)
+        return hw_scan_v2(s_v2[sel].fn, blk1, blk2, nonce, count, cands, maxCands, nCands);
+    return hw_scan_classic(blk1, blk2, nonce, count, mask, cands, maxCands, nCands);
+}
+
+// Known-Answer-Test: Header-Wort i = 0x9E3779B9 * (i + 1), Nonces (T[3]-Wort)
+// 0x1000 .. 0x1000+262143. Genau diese 6 Kandidaten (in Python nachgerechnet).
+// Ein einziger falscher Hash, der zufaellig Kandidat wird oder einen versteckt,
+// laesst ihn scheitern.
+static bool v2_selftest(HwV2Fn fn)
+{
+    static const uint32_t expected[] = { 0xa94c, 0xe496, 0x1f476, 0x302f0, 0x35af9, 0x3cf5c };
+    const int nExp = sizeof(expected) / sizeof(expected[0]);
+    const uint32_t first = 0x1000;
+    uint32_t b1[16], b2[3], cands[8];
+    for (int i = 0; i < 16; i++) b1[i] = 0x9E3779B9u * (i + 1);
+    for (int i = 0; i < 3; i++)  b2[i] = 0x9E3779B9u * (i + 17);
+    int nc = 0;
+    hw_scan_v2(fn, b1, b2, first, 262144, cands, 8, &nc);
+    if (nc != nExp) return false;
+    for (int i = 0; i < nExp; i++)
+        if (cands[i] - first != expected[i]) return false;
+    return true;
+}
+
+bool hw_sha_select_loop()
+{
+    // Rev. 0-2: DPORT-Fehler (lesen ohne Schutz stoert den anderen Kern)
+    // -> nur die Varianten mit geschuetztem H7-Lesen (Micro-USB-Variante)
+    V2_CHAIN = s_dportFix ? V2_CHAIN_DF : V2_CHAIN_R3;
+    if (s_dportFix) Serial.println("[HW-SHA] Chip vor Rev. 3 -> v2-Schleifen mit DPORT-Schutz");
+    for (int n = 0; n < V2_COUNT; n++) {
+        const int v = V2_CHAIN[n];
+        // Bester aus drei: ein einzelner Ausreisser soll die schnelle Stufe nicht kosten
+        for (int tries = 0; tries < 3; tries++) {
+            uint32_t t0 = millis();
+            bool ok = v2_selftest(s_v2[v].fn);
+            Serial.printf("  Schleife %-30s Known-Answer-Test %s (%lu ms)\n", s_v2[v].name,
+                          ok ? "OK" : "FEHLER", (unsigned long)(millis() - t0));
+            if (ok) {
+                s_chainPos = n;
+                s_v2Loop = v;
+                return true;
+            }
+        }
+    }
+    s_v2Loop = -1;
+    return false;
+}
+
+// Jeder Kandidat wird in Software nachgerechnet. Werden davon zu viele nicht
+// bestaetigt, ist die Stufe auf diesem Chip zu knapp -> naechste, vorsichtigere.
+void hw_sha_report_candidate(bool confirmed)
+{
+    static uint32_t hits = 0, bad = 0;
+    if (s_v2Loop < 0 || s_testMode) return;
+    hits++;
+    if (!confirmed) bad++;
+    if (hits < 256) return;
+    if (bad >= 8 && s_chainPos + 1 < V2_COUNT) {
+        s_chainPos++;
+        s_v2Loop = V2_CHAIN[s_chainPos];
+        s_v2Switches++;
+        Serial.printf("[HW-SHA] %lu von %lu Kandidaten falsch -> wechsle auf %s\n",
+                      (unsigned long)bad, (unsigned long)hits, s_v2[s_v2Loop].name);
+    }
+    hits = bad = 0;
+}
+
+const char* hw_sha_loop_name()
+{
+    return s_v2Loop >= 0 ? s_v2[s_v2Loop].name : "klassisch (Master 002, kalibriert)";
+}
+
+// ---------------------------------------------------------------------------
+//  Master 004: Messbetrieb
+// ---------------------------------------------------------------------------
+int hw_sha_variant_count() { return V2_ALL; }
+
+const char* hw_sha_variant_name(int i) { return (i >= 0 && i < V2_ALL) ? s_v2[i].name : "?"; }
+
+bool hw_sha_variant_selftest(int i)
+{
+    return i >= 0 && i < V2_ALL && v2_selftest(s_v2[i].fn);
+}
+
+// Ueberlebt einen Neustart (nicht beim Einschalten): zuletzt aktive Variante
+static RTC_NOINIT_ATTR uint32_t s_rtcMagic;
+static RTC_NOINIT_ATTR int32_t  s_rtcVariant;
+
+void hw_sha_set_variant(int i)
+{
+    s_testMode = true;
+    if (i >= 0 && i < V2_ALL) s_v2Loop = i;
+    s_rtcMagic = 0x4C4F4F50;     // "LOOP"
+    s_rtcVariant = i;
+}
+
+// Variante, die vor dem letzten Neustart lief (-1 = keine / Kaltstart)
+int hw_sha_variant_before_reset()
+{
+    int v = (s_rtcMagic == 0x4C4F4F50) ? s_rtcVariant : -1;
+    s_rtcMagic = 0;
+    return v;
+}
+
+// Takte pro Nonce im reinen Durchlauf (ohne Betriebssystem-Last der Mining-Schleife)
+float hw_sha_variant_cycles(int i)
+{
+    uint32_t b1[16], b2[3], cands[8];
+    for (int k = 0; k < 16; k++) b1[k] = 0x01234567u * (k + 3);
+    for (int k = 0; k < 3; k++)  b2[k] = 0x89abcdefu * (k + 5);
+    int nc;
+    const uint32_t n = 200000;
+    uint32_t t0 = XTHAL_GET_CCOUNT();
+    hw_scan_v2(s_v2[i].fn, b1, b2, 0, n, cands, 8, &nc);
+    return (float)(XTHAL_GET_CCOUNT() - t0) / n;
+}
