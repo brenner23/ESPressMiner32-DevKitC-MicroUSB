@@ -98,7 +98,7 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 - **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
 - **Self-test** at boot (genesis block, 2000 random headers, 5000 nonces). If it fails, the miner does not mine.
 - **Every hit is re-checked in software** before a share is sent to the pool
-- **Web dashboard** at `http://espressminer.local/` with hashrate history, JSON at `/api/stats`
+- **Web dashboard** at `http://espressminer.local/` with hashrate history, JSON at `/api/stats` – UI and serial console in English (since v1.1.0.005)
 - **Primary and secondary pool** with automatic failover
 - **Setup without coding:** Wi-Fi portal, GUI setup tool or command line
 - **Optional LED on GPIO13** is on while mining and blinks on every share
@@ -140,7 +140,7 @@ As long as no settings are stored, the miner does **not** start mining but waits
 
 **1. Wi-Fi portal (phone/laptop)**
 Connect to the Wi-Fi `ESPressMiner32-XXXX` (password `espressminer`). The setup page opens automatically,
-otherwise go to `http://192.168.4.1/`. Fill in the form, then "Speichern & Neustart" (save & restart).
+otherwise go to `http://192.168.4.1/`. Fill in the form, then "Save & restart".
 The portal also starts if the stored Wi-Fi cannot be reached for 20 s.
 
 **2. GUI setup tool** (`pip install pyserial`)
@@ -206,7 +206,7 @@ The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are
-discarded by the software check and counted in the dashboard as "verworfen (Rechenfehler)" (discarded,
+discarded by the software check and counted in the dashboard as "discarded (calculation errors)" (discarded,
 calculation error).
 
 The classic ESP32 cannot load a SHA midstate back into the engine, so every nonce always needs three hardware blocks.

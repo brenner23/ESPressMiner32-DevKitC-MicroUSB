@@ -64,7 +64,7 @@ void StratumClient::onConnectFailed()
     _failCount++;
     int other = 1 - _poolIdx;
     if (_failCount >= POOL_MAX_FAILS && poolConfigured(other)) {
-        Serial.printf("[Stratum] %d Fehlversuche - wechsle Pool\n", _failCount);
+        Serial.printf("[Stratum] %d failed attempts - switching pool\n", _failCount);
         selectPool(other);
     }
 }
@@ -79,9 +79,9 @@ bool StratumClient::send(JsonDocument& doc)
 
 bool StratumClient::connectPool()
 {
-    Serial.printf("[Stratum] Verbinde mit %s:%u ...\n", _host.c_str(), _port);
+    Serial.printf("[Stratum] Connecting to %s:%u ...\n", _host.c_str(), _port);
     if (!_client.connect(_host.c_str(), _port, 5000)) {
-        Serial.println("[Stratum] Verbindung fehlgeschlagen");
+        Serial.println("[Stratum] Connection failed");
         return false;
     }
     _client.setNoDelay(true);
@@ -113,7 +113,7 @@ bool StratumClient::connectPool()
 
 void StratumClient::disconnect(const char* reason)
 {
-    Serial.printf("[Stratum] Getrennt: %s\n", reason);
+    Serial.printf("[Stratum] Disconnected: %s\n", reason);
     _client.stop();
     jobs::invalidate();
     g_stats.poolConnected = false;
@@ -135,7 +135,7 @@ void StratumClient::pollInput()
             } else if (buf[i] != '\r') {
                 _rx += buf[i];
                 if (_rx.length() > RX_MAX) {
-                    Serial.println("[Stratum] Zeile zu lang, verworfen");
+                    Serial.println("[Stratum] Line too long, discarded");
                     _rx = "";
                 }
             }
@@ -148,7 +148,7 @@ void StratumClient::handleLine(char* line, size_t len)
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, line, len);
     if (err) {
-        Serial.printf("[Stratum] JSON-Fehler: %s\n", err.c_str());
+        Serial.printf("[Stratum] JSON error: %s\n", err.c_str());
         return;
     }
 
@@ -162,10 +162,10 @@ void StratumClient::handleLine(char* line, size_t len)
                 jobs::setDifficulty(d);
                 char s[16];
                 format_difficulty(d, s, sizeof(s));
-                Serial.printf("[Stratum] Neue Pool-Difficulty: %s\n", s);
+                Serial.printf("[Stratum] New pool difficulty: %s\n", s);
             }
         } else {
-            Serial.printf("[Stratum] Ignoriere Methode %s\n", method);
+            Serial.printf("[Stratum] Ignoring method %s\n", method);
         }
         return;
     }
@@ -175,7 +175,7 @@ void StratumClient::handleLine(char* line, size_t len)
 
     if (id == ID_SUBSCRIBE) {
         if (hasError || !doc["result"].is<JsonArray>()) {
-            disconnect("subscribe abgelehnt");
+            disconnect("subscribe rejected");
             onConnectFailed();
             return;
         }
@@ -187,14 +187,14 @@ void StratumClient::handleLine(char* line, size_t len)
     } else if (id == ID_AUTHORIZE) {
         bool ok = doc["result"] | false;
         g_stats.poolAuthorized = ok;
-        Serial.printf("[Stratum] Autorisierung %s\n", ok ? "OK" : "FEHLGESCHLAGEN");
+        Serial.printf("[Stratum] Authorization %s\n", ok ? "OK" : "FAILED");
         if (ok) {
             _failCount = 0;
         } else {
             String e;
             serializeJson(doc["error"], e);
-            Serial.printf("[Stratum] Fehler: %s\n", e.c_str());
-            disconnect("Autorisierung fehlgeschlagen");
+            Serial.printf("[Stratum] Error: %s\n", e.c_str());
+            disconnect("authorization failed");
             onConnectFailed();
         }
     } else if (id == ID_SUGGEST) {
@@ -203,12 +203,12 @@ void StratumClient::handleLine(char* line, size_t len)
         bool ok = doc["result"] | false;
         if (ok) {
             g_stats.accepted++;
-            Serial.println("[Stratum] Share akzeptiert");
+            Serial.println("[Stratum] Share accepted");
         } else {
             g_stats.rejected++;
             String e;
             serializeJson(doc["error"], e);
-            Serial.printf("[Stratum] Share abgelehnt: %s\n", e.c_str());
+            Serial.printf("[Stratum] Share rejected: %s\n", e.c_str());
         }
     }
 }
@@ -320,7 +320,7 @@ void StratumClient::submitShares()
 
         char d[16];
         format_difficulty(s.difficulty, d, sizeof(d));
-        Serial.printf("[Stratum] Share gesendet: Job %s Nonce %s Diff %s\n", s.jobId, nonceHex, d);
+        Serial.printf("[Stratum] Share sent: job %s nonce %s diff %s\n", s.jobId, nonceHex, d);
     }
 }
 
@@ -334,7 +334,7 @@ void StratumClient::run()
             s_switchRequest = false;
             int other = 1 - _poolIdx;
             if (poolConfigured(other)) {
-                disconnect("Pool manuell gewechselt");
+                disconnect("pool switched manually");
                 selectPool(other);
             }
         }
@@ -348,7 +348,7 @@ void StratumClient::run()
         }
 
         if (WiFi.status() != WL_CONNECTED) {
-            if (_client.connected()) disconnect("WLAN verloren");
+            if (_client.connected()) disconnect("Wi-Fi lost");
             vTaskDelay(pdMS_TO_TICKS(500));
             continue;
         }
@@ -356,7 +356,7 @@ void StratumClient::run()
         if (!_client.connected()) {
             if (g_stats.poolConnected) {
                 bool wasAuthorized = g_stats.poolAuthorized;
-                disconnect("Verbindung vom Pool geschlossen");
+                disconnect("connection closed by pool");
                 if (!wasAuthorized) onConnectFailed();
             }
             if (millis() - lastAttempt >= STRATUM_RECONNECT_MS || lastAttempt == 0) {

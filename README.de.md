@@ -98,7 +98,7 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
 - **Selbsttest** beim Start (Genesis-Block, 2000 Zufalls-Header, 5000 Nonces). Schlägt er fehl, wird nicht gemint.
 - **Jeder Treffer wird in Software nachgerechnet**, bevor ein Share zum Pool geht
-- **Web-Dashboard** unter `http://espressminer.local/` mit Hashrate-Verlauf, JSON unter `/api/stats`
+- **Web-Dashboard** unter `http://espressminer.local/` mit Hashrate-Verlauf, JSON unter `/api/stats` – Oberfläche und Konsole auf Englisch (ab v1.1.0.005)
 - **Primary- und Secondary-Pool** mit automatischem Wechsel
 - **Einrichtung ohne Programmieren:** WLAN-Portal, Setup-Programm mit Oberfläche oder Kommandozeile
 - **Optionale LED an GPIO13** leuchtet beim Minen und blinkt bei jedem Share
@@ -140,7 +140,7 @@ Solange keine Einstellungen gespeichert sind, startet der Miner **nicht** zum Mi
 
 **1. WLAN-Portal (Handy/Laptop)**
 Mit dem WLAN `ESPressMiner32-XXXX` (Passwort `espressminer`) verbinden. Die Einrichtungsseite öffnet sich
-automatisch, sonst `http://192.168.4.1/` aufrufen. Ausfüllen, „Speichern & Neustart“.
+automatisch, sonst `http://192.168.4.1/` aufrufen. Ausfüllen, „Save & restart“.
 Das Portal startet auch, wenn das gespeicherte WLAN 20 s lang nicht erreichbar ist.
 
 **2. Setup-Programm mit Oberfläche** (`pip install pyserial`)
@@ -175,7 +175,7 @@ python tools/espressminer_setup.py --reset         # Einstellungen löschen -> P
 | 1 | Hardware-SHA-Miner (exklusiv) |
 | 0 | WLAN, Stratum-Client, Web-Dashboard, Statistik |
 
-- **Einstellungen** (Zahnrad im Dashboard): Hostname, WLAN, Primary- und Secondary-Pool, gespeichert im Flash (NVS).
+- **Einstellungen** (Zahnrad „Settings“ im Dashboard): Hostname, WLAN, Primary- und Secondary-Pool, gespeichert im Flash (NVS).
   Nach 3 Fehlversuchen wechselt der Miner zum anderen Pool, vom Secondary aus wird alle 10 Minuten der Primary erneut versucht.
 - Das Dashboard läuft auf Core 0 und kostet keine Hashrate.
 
@@ -206,7 +206,7 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete
-Treffer werden bei der Software-Prüfung verworfen und im Dashboard als „verworfen (Rechenfehler)“ gezählt.
+Treffer werden bei der Software-Prüfung verworfen und im Dashboard als „discarded (calculation errors)“ gezählt.
 
 Der klassische ESP32 kann keinen SHA-Zwischenstand (Midstate) in die Engine zurückladen. Pro Nonce sind deshalb
 immer drei Hardware-Blöcke nötig.

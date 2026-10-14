@@ -11,6 +11,10 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | 1.1.0.003 | 2026-10-13 | J + DPORT-Schutz, verschachtelt | **972** | 942 / 31 | 0 / 1773 Kandidaten | Benchmark 948,6 kH/s, 252 Takte/Hash; 43 °C |
 | 1.1.0.004 | 2026-10-13 | + wsr ps im Write-Abstand | 972 | 942 / 31 | 0 | Benchmark 948,8 kH/s, 252 Takte – **kein Gewinn** |
 
+## 1.1.0.005 – nur Texte: Weboberfläche + Konsole englisch
+- Keine Änderung am Hash-Code. Gebaut und die Webseite lokal mit Testdaten geprüft (Dashboard + Einrichtungsfenster);
+  auf ChatMini noch nicht geflasht (Board war abgezogen).
+
 ## 1.1.0.004 – auch `wsr ps` in einen Write-Abstand (Versuch, kein Gewinn)
 - Variante `hw_t_d_pl1_dfw` (df = 4): `s32i T1` → APB → H7 → `s32i T2` → `wsr ps` → `s32i T3` → `rsync` → `s32i T4`.
 - Ergebnis: weiterhin 252 Takte/Hash, 972 kH/s. `wsr ps` kostet seine Zeit offenbar unabhängig von der Position

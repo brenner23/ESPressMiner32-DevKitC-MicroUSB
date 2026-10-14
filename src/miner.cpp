@@ -30,8 +30,8 @@ void update(float t)
     else if (t >= TEMP_SW_PAUSE_C)         lv = (lv == 2) ? 2 : 1;      // aus Stufe 2 erst unter RESUME
     if (t < TEMP_RESUME_C)                 lv = 0;
     if (lv != s_level) {
-        static const char* txt[] = { "normal", "Software-Miner pausiert", "Mining gestoppt" };
-        Serial.printf("[Temperatur] %.1f C -> %s\n", t, txt[lv]);
+        static const char* txt[] = { "normal", "software miner paused", "mining stopped" };
+        Serial.printf("[Temperature] %.1f C -> %s\n", t, txt[lv]);
         s_level = lv;
     }
 }
@@ -47,8 +47,8 @@ int level() { return s_level; }
 const char* text()
 {
     switch (s_level) {
-        case 1:  return "Software-Miner pausiert (zu warm)";
-        case 2:  return "Mining gestoppt (zu warm)";
+        case 1:  return "software miner paused (too hot)";
+        case 2:  return "mining stopped (too hot)";
         default: return "normal";
     }
 }
@@ -93,7 +93,7 @@ static void verify_candidate(const MiningJob& job, uint32_t nonce, bool fromHw)
         g_stats.sharesFound++;
         if (diff >= job.networkDiff) {
             g_stats.blocksFound++;
-            Serial.println("\n*** BLOCK GEFUNDEN! ***\n");
+            Serial.println("\n*** BLOCK FOUND! ***\n");
         }
         jobs::pushShare(s);
     }

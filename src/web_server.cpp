@@ -118,7 +118,7 @@ static void handle_config_post()
 {
     JsonDocument doc;
     if (deserializeJson(doc, s_server.arg("plain"))) {
-        s_server.send(400, "text/plain", "Ungueltiges JSON");
+        s_server.send(400, "text/plain", "Invalid JSON");
         return;
     }
 
@@ -129,12 +129,12 @@ static void handle_config_post()
         return;
     }
     if (!settings_save(s)) {
-        s_server.send(500, "text/plain", "Speichern fehlgeschlagen");
+        s_server.send(500, "text/plain", "Saving failed");
         return;
     }
 
-    s_server.send(200, "text/plain", "Gespeichert - Neustart ...");
-    Serial.println("[Web] Einstellungen gespeichert, Neustart ...");
+    s_server.send(200, "text/plain", "Saved - restarting ...");
+    Serial.println("[Web] Settings saved, restarting ...");
     vTaskDelay(pdMS_TO_TICKS(500));
     ESP.restart();
 }
@@ -166,11 +166,11 @@ void web_start_portal(bool keepSta)
 
     Serial.println();
     Serial.println("==============================================");
-    Serial.println("  EINRICHTUNGS-PORTAL AKTIV");
-    Serial.printf("  WLAN:     %s\n", ssid);
-    Serial.printf("  Passwort: %s\n", PORTAL_AP_PASSWORD);
-    Serial.println("  Seite:    http://192.168.4.1/");
-    Serial.println("  (oder per serieller Konsole / tools/espressminer_setup.py)");
+    Serial.println("  SETUP PORTAL ACTIVE");
+    Serial.printf("  Wi-Fi:    %s\n", ssid);
+    Serial.printf("  Password: %s\n", PORTAL_AP_PASSWORD);
+    Serial.println("  Page:     http://192.168.4.1/");
+    Serial.println("  (or via serial console / tools/espressminer_setup.py)");
     Serial.println("==============================================");
 }
 
@@ -180,7 +180,7 @@ static void stop_portal()
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
     s_portal = false;
-    Serial.println("[Web] WLAN verbunden - Einrichtungs-Portal beendet");
+    Serial.println("[Web] Wi-Fi connected - setup portal closed");
 }
 
 // Im Portal-Modus leiten unbekannte URLs (z.B. die Captive-Portal-Pruefung von
@@ -192,13 +192,13 @@ static void handle_not_found()
         s_server.send(302, "text/plain", "");
         return;
     }
-    s_server.send(404, "text/plain", "Nicht gefunden");
+    s_server.send(404, "text/plain", "Not found");
 }
 
 static void start_mdns()
 {
     if (MDNS.begin(g_settings.hostname.c_str())) MDNS.addService("http", "tcp", 80);
-    Serial.printf("[Web] Dashboard: http://%s/  bzw.  http://%s.local/\n",
+    Serial.printf("[Web] Dashboard: http://%s/  or  http://%s.local/\n",
                   WiFi.localIP().toString().c_str(), g_settings.hostname.c_str());
 }
 
@@ -214,11 +214,11 @@ void web_task(void*)
     s_server.on("/api/scan", HTTP_GET, handle_scan);
     s_server.on("/api/switchpool", HTTP_POST, [] {
         if (g_settings.pools[1].url.isEmpty()) {
-            s_server.send(400, "text/plain", "Kein Secondary Pool konfiguriert");
+            s_server.send(400, "text/plain", "No secondary pool configured");
             return;
         }
         stratum_request_switch();
-        s_server.send(200, "text/plain", "Pool wird gewechselt");
+        s_server.send(200, "text/plain", "Switching pool");
     });
     s_server.onNotFound(handle_not_found);
     s_server.begin();

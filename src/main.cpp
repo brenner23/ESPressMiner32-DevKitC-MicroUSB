@@ -32,13 +32,13 @@ static float s_ltCyc[LT_N];
 // Vor dem Mining (Engine frei): Known-Answer-Test und Takte je Variante
 static void loop_test_prepare()
 {
-    Serial.println("[Messbetrieb] Varianten der Hash-Schleife:");
+    Serial.println("[Loop test] Hash loop variants:");
     for (int k = 0; k < LT_N; k++) {
         s_ltOk[k]  = hw_sha_variant_selftest(LT_IDX[k]) || hw_sha_variant_selftest(LT_IDX[k]);
         s_ltCyc[k] = hw_sha_variant_cycles(LT_IDX[k]);
-        Serial.printf("  %c %-30s %6.1f Takte = %6.1f kH/s  KAT %s\n", LT_TAG[k],
+        Serial.printf("  %c %-30s %6.1f cycles = %6.1f kH/s  KAT %s\n", LT_TAG[k],
                       hw_sha_variant_name(LT_IDX[k]), s_ltCyc[k], 240000.0f / s_ltCyc[k],
-                      s_ltOk[k] ? "OK" : "FEHLER (wird uebersprungen)");
+                      s_ltOk[k] ? "OK" : "FAILED (skipped)");
     }
 }
 
@@ -58,7 +58,7 @@ static void loop_test_task(void*)
             for (int m = 1; m <= HW_LOOP_TEST; m++) {
                 const uint32_t cm = g_stats.hwCandidates, em = g_stats.hwErrors;
                 vTaskDelay(pdMS_TO_TICKS(60000UL));
-                Serial.printf("[Messbetrieb] %c Minute %d: %lu Kandidaten, %lu verworfen\n", LT_TAG[k], m,
+                Serial.printf("[Loop test] %c minute %d: %lu candidates, %lu discarded\n", LT_TAG[k], m,
                               (unsigned long)(g_stats.hwCandidates - cm), (unsigned long)(g_stats.hwErrors - em));
             }
             const float dt = (millis() - t0) / 1000.0f;
@@ -70,7 +70,7 @@ static void loop_test_task(void*)
             // Bericht: HW-Hashrate, Fehlerquote = verworfene / alle HW-Kandidaten,
             // effektiv = Hashrate * (1 - Fehlerquote)
             int len = snprintf(g_loopTest, sizeof(g_loopTest),
-                               "Runde %d | Var | kH/s HW | Takte(Bench) | Kand | verworfen | Fehler%% | effektiv\n", round);
+                               "Round %d | Var | kH/s HW | cycles(bench) | cand | discarded | error%% | effective\n", round);
             for (int j = 0; j < LT_N && len < (int)sizeof(g_loopTest) - 120; j++) {
                 if (!sumT[j]) continue;
                 const float kh  = sumH[j] / sumT[j] / 1000.0f;
@@ -80,7 +80,7 @@ static void loop_test_task(void*)
                                 hw_sha_variant_name(LT_IDX[j]), kh, s_ltCyc[j], (unsigned long)sumC[j],
                                 (unsigned long)sumE[j], err, kh * (1.0f - err / 100.0f));
             }
-            Serial.print("[Messbetrieb]\n");
+            Serial.print("[Loop test]\n");
             Serial.print(g_loopTest);
         }
     }
@@ -125,17 +125,17 @@ static bool wifi_begin()
     WiFi.setAutoReconnect(true);
     WiFi.begin(g_settings.wifiSsid.c_str(), g_settings.wifiPass.c_str());
 
-    Serial.printf("[WiFi] Verbinde mit \"%s\" ", g_settings.wifiSsid.c_str());
+    Serial.printf("[WiFi] Connecting to \"%s\" ", g_settings.wifiSsid.c_str());
     uint32_t t0 = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - t0 < WIFI_CONNECT_TIMEOUT_MS) {
         delay(250);
         Serial.print('.');
     }
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("\n[WiFi] Verbunden, IP %s, RSSI %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        Serial.printf("\n[WiFi] Connected, IP %s, RSSI %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
         return true;
     }
-    Serial.println("\n[WiFi] nicht erreichbar - Portal wird zusaetzlich gestartet");
+    Serial.println("\n[WiFi] not reachable - starting setup portal as well");
     return false;
 }
 
@@ -149,19 +149,19 @@ void setup()
     Serial.println("==============================================");
     Serial.println("  " MINER_NAME " v" MINER_VERSION "  -  ESP32 Bitcoin Miner");
     {
-        static const char* RR[] = { "unbekannt", "Einschalten", "extern", "Software", "PANIC (Absturz)",
-                                    "Interrupt-Watchdog", "Task-Watchdog", "Watchdog", "Deep-Sleep",
-                                    "Brownout (Spannung)", "SDIO" };
+        static const char* RR[] = { "unknown", "power-on", "extern", "Software", "PANIC (crash)",
+                                    "interrupt watchdog", "task watchdog", "Watchdog", "Deep-Sleep",
+                                    "brownout (voltage)", "SDIO" };
         const int r = (int)esp_reset_reason();
         g_resetReason = (r >= 0 && r < (int)(sizeof(RR) / sizeof(RR[0]))) ? RR[r] : "?";
         g_variantBeforeReset = hw_sha_variant_before_reset();
-        Serial.printf("  Reset-Grund: %s", g_resetReason);
+        Serial.printf("  Reset reason: %s", g_resetReason);
         if (g_variantBeforeReset >= 0)
-            Serial.printf("  | lief vorher: Variante %s", hw_sha_variant_name(g_variantBeforeReset));
+            Serial.printf("  | was running: variant %s", hw_sha_variant_name(g_variantBeforeReset));
         Serial.println();
     }
     Serial.println("==============================================");
-    Serial.printf("CPU %lu MHz, freier Heap %lu Bytes\n",
+    Serial.printf("CPU %lu MHz, free heap %lu bytes\n",
                   (unsigned long)getCpuFrequencyMhz(), (unsigned long)ESP.getFreeHeap());
 
 #if LED_PIN >= 0
@@ -175,19 +175,19 @@ void setup()
     hw_sha_begin();
     // Master 003: zuerst die v2-Schleife (NerdMiner Modded) pruefen. Besteht sie,
     // wird die klassische Schleife nicht kalibriert (spart Startzeit).
-    Serial.println("[Hash-Schleife]");
+    Serial.println("[Hash loop]");
     const bool v2 = hw_sha_select_loop();
-    Serial.printf("[HW-SHA] aktiv: %s\n", hw_sha_loop_name());
+    Serial.printf("[HW-SHA] active: %s\n", hw_sha_loop_name());
     // Einzelne Fehlversuche kommen vor (beobachtet in Master 002); die
     // Notwerte kosten ~60 % Hashrate, daher mehrmals versuchen.
     bool calibrated = false;
     for (int attempt = 0; attempt < 3 && !calibrated && !v2; attempt++) calibrated = selftest_calibrate();
     if (!calibrated && !v2) {
-        Serial.println("KALIBRIERUNG FEHLGESCHLAGEN - sichere Standardwerte werden genutzt.");
+        Serial.println("CALIBRATION FAILED - using safe default timings.");
         hw_sha_set_timing(HW_TIMING_SAFE);
     }
     if (!selftest_run()) {
-        Serial.println("SELBSTTEST FEHLGESCHLAGEN - Mining wird nicht gestartet.");
+        Serial.println("SELF-TEST FAILED - mining will not start.");
         for (;;) delay(1000);
     }
     selftest_benchmark();
@@ -204,7 +204,7 @@ void setup()
 
     if (!configured) {
         // Erster Start: noch keine Zugangsdaten im NVS -> nur Portal, kein Mining
-        Serial.println("[Setup] Keine gespeicherten Einstellungen gefunden.");
+        Serial.println("[Setup] No saved settings found.");
         web_start_portal(false);
         return;
     }

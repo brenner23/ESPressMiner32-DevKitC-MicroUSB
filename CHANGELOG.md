@@ -3,6 +3,13 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.005 (2026-10-14) – Weboberfläche und Konsole auf Englisch
+- Dashboard, Einstellungen/Einrichtungs-Portal, Meldungen beim Speichern und Überhitzungsstatus komplett englisch
+  (Settings, Blocks found, Save & restart, …), damit das Projekt auch international nutzbar ist.
+- Serielle Konsole englisch (Selbsttest, Kalibrierung, Stratum, WLAN, Reset-Grund), ebenso die Schleifennamen
+  in `/api/stats` (`hwLoop`, z. B. „J + DPORT protection, interleaved + wsr (rev. 1)“) und `resetReason` („power-on“ …).
+- Hash-Code unverändert (gleiche Schleife wie .004, ~972 kH/s). Kommentare im Quelltext bleiben deutsch.
+
 ## v1.1.0.004 (2026-10-13) – Versuch `wsr ps` im Write-Abstand, ~972 kH/s, Nachtlauf bestanden
 - Variante `hw_t_d_pl1_dfw`: auch `wsr ps` sitzt in einem Abstand zwischen den SHA-Writes. Ergebnis gleich .003
   (252 Takte, ~972 kH/s) – kein Gewinn, aber auch kein Nachteil.

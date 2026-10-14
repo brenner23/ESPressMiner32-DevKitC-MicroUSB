@@ -116,15 +116,15 @@ void hw_sha_begin()
 {
     // SHA-1 und SHA-256 sperren, damit mbedTLS (WPA2) den Textpuffer nie
     // anfasst und stattdessen Software-SHA nutzt.
-    if (!esp_sha_try_lock_engine(SHA1))     Serial.println("[HW-SHA] SHA1-Engine belegt");
-    if (!esp_sha_try_lock_engine(SHA2_256)) Serial.println("[HW-SHA] SHA256-Engine belegt");
-    Serial.println("[HW-SHA] Beschleuniger reserviert");
+    if (!esp_sha_try_lock_engine(SHA1))     Serial.println("[HW-SHA] SHA1 engine busy");
+    if (!esp_sha_try_lock_engine(SHA2_256)) Serial.println("[HW-SHA] SHA256 engine busy");
+    Serial.println("[HW-SHA] Accelerator reserved");
 
     const unsigned major = efuse_hal_get_major_chip_version();
     const unsigned minor = efuse_hal_get_minor_chip_version();
     s_dportFix = major < 3;
     Serial.printf("[HW-SHA] Chip-Revision v%u.%u%s\n", major, minor,
-                  s_dportFix ? " -> DPORT-Workaround aktiv (aeltere ESP32)" : "");
+                  s_dportFix ? " -> DPORT workaround active (older ESP32)" : "");
 }
 
 bool hw_sha_dport_fix() { return s_dportFix; }
@@ -269,7 +269,7 @@ static_assert(offsetof(HwScanArgs, b1) == 0 && offsetof(HwScanArgs, b2) == 4 &&
               offsetof(HwScanArgs, mask) == 16 && offsetof(HwScanArgs, cands) == 20 &&
               offsetof(HwScanArgs, maxCands) == 24 && offsetof(HwScanArgs, found) == 28 &&
               offsetof(HwScanArgs, d0) == 32 && offsetof(HwScanArgs, l2) == 48 &&
-              offsetof(HwScanArgs, guard) == 52, "Offsets passen nicht zu hw_scan_asm.S");
+              offsetof(HwScanArgs, guard) == 52, "Offsets do not match hw_scan_asm.S");
 
 extern "C" uint32_t hw_scan_asm(HwScanArgs* a);
 
@@ -329,7 +329,7 @@ struct HwV2Ctx {
 };
 static_assert(offsetof(HwV2Ctx, apb) == 76 && offsetof(HwV2Ctx, nonce) == 80 && offsetof(HwV2Ctx, budget) == 84 &&
               offsetof(HwV2Ctx, run) == 88 && offsetof(HwV2Ctx, pad) == 92,
-              "Offsets passen nicht zu hw_scan_v2.S");
+              "Offsets do not match hw_scan_v2.S");
 
 typedef uint32_t (*HwV2Fn)(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_fast(volatile uint32_t* sha_base, HwV2Ctx* ctx);
@@ -359,31 +359,31 @@ extern "C" uint32_t hw_t_d_pl1_dfp(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfw(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 
 static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
-    { hw_v2_fast,   "v2 schnell (247 Takte)" },
-    { hw_v2_margin, "v2 +2 Reserve (257 Takte)" },
-    { hw_v2_wide,   "v2 breite Reserve (317 Takte)" },
+    { hw_v2_fast,   "v2 fast (247 cycles)" },
+    { hw_v2_margin, "v2 +2 margin (257 cycles)" },
+    { hw_v2_wide,   "v2 wide margin (317 cycles)" },
     // ab hier nur im Messbetrieb (nicht Teil der Rueckfallkette)
-    { hw_t_quiet,   "B ruhige Wartezeiten" },
-    { hw_t_r3,      "C Register, Abstand 3" },
-    { hw_t_r2,      "D Register, Abstand 2" },
-    { hw_t_r1,      "E Register, Abstand 1" },
-    { hw_t_r2q,     "F Register, Abstand 2, ruhig" },
-    { hw_t_r1q,     "G Register, Abstand 1, ruhig" },
-    { hw_t_d_p1,    "H D + p1 ruhig" },
-    { hw_t_d_p2,    "I D + p2 ruhig" },
-    { hw_t_d_pl1,   "J Register + pl1 ruhig (241 Takte)" },
-    { hw_t_d_p3,    "K D + p3 ruhig" },
-    { hw_t_d_pl2,   "L D + pl2 ruhig" },
-    { hw_t_d_q4,    "M D + ruhig ausser pl2" },
-    { hw_t_n,       "N D + p2 pl1 p3 ruhig" },
+    { hw_t_quiet,   "B quiet delays" },
+    { hw_t_r3,      "C registers, spacing 3" },
+    { hw_t_r2,      "D registers, spacing 2" },
+    { hw_t_r1,      "E registers, spacing 1" },
+    { hw_t_r2q,     "F registers, spacing 2, quiet" },
+    { hw_t_r1q,     "G registers, spacing 1, quiet" },
+    { hw_t_d_p1,    "H D + p1 quiet" },
+    { hw_t_d_p2,    "I D + p2 quiet" },
+    { hw_t_d_pl1,   "J registers + pl1 quiet (241 cycles)" },
+    { hw_t_d_p3,    "K D + p3 quiet" },
+    { hw_t_d_pl2,   "L D + pl2 quiet" },
+    { hw_t_d_q4,    "M D + quiet except pl2" },
+    { hw_t_n,       "N D + p2 pl1 p3 quiet" },
     // Micro-USB: Chips vor Rev. 3 (Errata 3.10), H7 geschuetzt gelesen
-    { hw_t_d_pl1_df,   "J + DPORT-Schutz (Rev. 1)" },
-    { hw_v2_fast_df,   "v2 schnell + DPORT-Schutz (Rev. 1)" },
-    { hw_v2_margin_df, "v2 +2 Reserve + DPORT-Schutz (Rev. 1)" },
-    { hw_v2_wide_df,   "v2 breit + DPORT-Schutz (Rev. 1)" },
-    { hw_t_d_pl1_dfo,  "J + DPORT-Schutz, vorbereitet (Rev. 1)" },
-    { hw_t_d_pl1_dfp,  "J + DPORT-Schutz, verschachtelt (Rev. 1)" },
-    { hw_t_d_pl1_dfw,  "J + DPORT-Schutz, verschachtelt + wsr (Rev. 1)" },
+    { hw_t_d_pl1_df,   "J + DPORT protection (rev. 1)" },
+    { hw_v2_fast_df,   "v2 fast + DPORT protection (rev. 1)" },
+    { hw_v2_margin_df, "v2 +2 margin + DPORT protection (rev. 1)" },
+    { hw_v2_wide_df,   "v2 wide + DPORT protection (rev. 1)" },
+    { hw_t_d_pl1_dfo,  "J + DPORT protection, prepared (rev. 1)" },
+    { hw_t_d_pl1_dfp,  "J + DPORT protection, interleaved (rev. 1)" },
+    { hw_t_d_pl1_dfw,  "J + DPORT protection, interleaved + wsr (rev. 1)" },
 };
 static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
 // Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
@@ -458,15 +458,15 @@ bool hw_sha_select_loop()
     // -> nur die Varianten mit geschuetztem H7-Lesen (Micro-USB-Variante)
     V2_CHAIN = s_dportFix ? V2_CHAIN_DF : V2_CHAIN_R3;
     V2_COUNT = s_dportFix ? V2_COUNT_DF : V2_COUNT_R3;
-    if (s_dportFix) Serial.println("[HW-SHA] Chip vor Rev. 3 -> v2-Schleifen mit DPORT-Schutz");
+    if (s_dportFix) Serial.println("[HW-SHA] Chip before rev. 3 -> v2 loops with DPORT protection");
     for (int n = 0; n < V2_COUNT; n++) {
         const int v = V2_CHAIN[n];
         // Bester aus drei: ein einzelner Ausreisser soll die schnelle Stufe nicht kosten
         for (int tries = 0; tries < 3; tries++) {
             uint32_t t0 = millis();
             bool ok = v2_selftest(s_v2[v].fn);
-            Serial.printf("  Schleife %-30s Known-Answer-Test %s (%lu ms)\n", s_v2[v].name,
-                          ok ? "OK" : "FEHLER", (unsigned long)(millis() - t0));
+            Serial.printf("  Loop %-30s known-answer test %s (%lu ms)\n", s_v2[v].name,
+                          ok ? "OK" : "FAILED", (unsigned long)(millis() - t0));
             if (ok) {
                 s_chainPos = n;
                 s_v2Loop = v;
@@ -491,7 +491,7 @@ void hw_sha_report_candidate(bool confirmed)
         s_chainPos++;
         s_v2Loop = V2_CHAIN[s_chainPos];
         s_v2Switches++;
-        Serial.printf("[HW-SHA] %lu von %lu Kandidaten falsch -> wechsle auf %s\n",
+        Serial.printf("[HW-SHA] %lu of %lu candidates wrong -> switching to %s\n",
                       (unsigned long)bad, (unsigned long)hits, s_v2[s_v2Loop].name);
     }
     hits = bad = 0;
@@ -499,7 +499,7 @@ void hw_sha_report_candidate(bool confirmed)
 
 const char* hw_sha_loop_name()
 {
-    return s_v2Loop >= 0 ? s_v2[s_v2Loop].name : "klassisch (Master 002, kalibriert)";
+    return s_v2Loop >= 0 ? s_v2[s_v2Loop].name : "classic (Master 002, calibrated)";
 }
 
 // ---------------------------------------------------------------------------

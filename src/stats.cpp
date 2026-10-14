@@ -76,12 +76,12 @@ void stats_task(void*)
         static uint32_t lastId = 0;
         if (now - lastId >= 60000UL) {
             lastId = now;
-            Serial.printf("           " MINER_NAME " v" MINER_VERSION "  | HW-Schleife: %s | Chip %.1f C (grob)\n",
+            Serial.printf("           " MINER_NAME " v" MINER_VERSION "  | HW loop: %s | chip %.1f C (rough)\n",
                           hw_sha_loop_name(), g_stats.chipTemp);
         }
 
         if (g_stats.hwErrors) {
-            Serial.printf("           HW-Fehler (verworfen): %lu von %lu Kandidaten\n",
+            Serial.printf("           HW errors (discarded): %lu of %lu candidates\n",
                           (unsigned long)g_stats.hwErrors, (unsigned long)g_stats.candidates);
         }
     }
