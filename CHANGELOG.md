@@ -3,6 +3,13 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.004 (2026-10-13) – Versuch `wsr ps` im Write-Abstand, ~972 kH/s, Nachtlauf bestanden
+- Variante `hw_t_d_pl1_dfw`: auch `wsr ps` sitzt in einem Abstand zwischen den SHA-Writes. Ergebnis gleich .003
+  (252 Takte, ~972 kH/s) – kein Gewinn, aber auch kein Nachteil.
+- **Nachtlauf 11,1 h** (13./14.10.): Ø 973,2 kH/s, 0 Neustarts, 6 von 587.751 Kandidaten verworfen,
+  Pool zählt 890 Shares ≈ 965 kH/s echte Arbeit, Chip 43–46 °C. Damit **stabil, Stand freigegeben**.
+- `tools/miner_logger.py`: Langzeitprotokoll beliebiger Miner über `/api/stats` (log + csv).
+
 ## v1.1.0.003 (2026-10-13) – Schutzsequenz verschachtelt, ~972 kH/s
 - Neue Variante „J + DPORT-Schutz, verschachtelt“: kein `nop` mehr vor dem geschützten Lesen (der APB-Zugriff
   sorgt selbst für den Abstand zwischen den SHA-Writes), `rsync` sitzt in der Pause nach dem nächsten Write.

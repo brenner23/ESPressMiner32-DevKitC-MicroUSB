@@ -15,6 +15,10 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 - Variante `hw_t_d_pl1_dfw` (df = 4): `s32i T1` → APB → H7 → `s32i T2` → `wsr ps` → `s32i T3` → `rsync` → `s32i T4`.
 - Ergebnis: weiterhin 252 Takte/Hash, 972 kH/s. `wsr ps` kostet seine Zeit offenbar unabhängig von der Position
   (bzw. der folgende Write wartet darauf). → **.003 bleibt die Basis**, .004 nur dokumentiert.
+- **Nachtlauf mit .004** (13.10. 21:46 – 14.10. 08:55, 11,1 h, Logger auf .49 alle 2 min): Ø 973,2 kH/s
+  (971,8–974,5), 0 Neustarts, 6 verworfen von 587.751 HW-Kandidaten, Chip 43–46 °C, Thermik immer „normal“.
+  Pool (shares.json, 22–09 Uhr): ChatMini 890 Shares = 965 kH/s; NerdMiner 959–999, ChatGPT (USB-C) 1039.
+  → **.004 ist stabil und bleibt drauf.**
 
 ## 1.1.0.003 – Schutzsequenz mit den Header-Writes verschachtelt
 - Neue Variante `hw_t_d_pl1_dfp` (df = 3): kein `nop` nach dem Write von T[1] vor dem Lesen (der APB-Zugriff

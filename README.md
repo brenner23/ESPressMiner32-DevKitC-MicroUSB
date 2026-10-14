@@ -25,8 +25,8 @@ Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.003: ~972 kH/s** (hardware
 252 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+24 %**.
 On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.003.png" alt="Dashboard v1.1.0.003 on ESP32 rev. 1.0" width="720"><br>
-<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.003 – pool, worker, Wi-Fi and IP redacted.
+<p align="center"><img src="docs/dashboard_v1.1.0.004.png" alt="Dashboard v1.1.0.004 on ESP32 rev. 1.0" width="720"><br>
+<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.004 after an 11 h 24 min overnight run – pool, worker and Wi-Fi redacted.
 Console output at boot (chip revision, self-test, benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
 > **The rev. 1 bug:** ESP32 up to revision 1.x has a silicon bug (Espressif errata 3.10): when one core
@@ -38,6 +38,21 @@ Console output at boot (chip revision, self-test, benchmark): <a href="docs/kons
 > **New in v1.1.0.001:** the fast v2 hash loop (from NerdMiner Modded) reads only **one** word (H7) from the SHA
 > buffer per nonce. The main project still disables it on old chips; here dedicated variants protect exactly that
 > one read. Cost: ~19 cycles per hash (259 instead of 240) instead of ~13 % as in v1.0.0.
+
+### Overnight run (v1.1.0.004)
+
+Test board (ESP32-D0WDQ6 rev. 1.0) on our own stratum pool, software miner on, logged every 2 minutes via
+`/api/stats` (`tools/miner_logger.py`). 13/14 Oct 2026, 21:46–08:55:
+
+| | Value |
+|---|---|
+| Duration | **11.1 h**, 335 samples, **0 restarts** |
+| Hashrate | **avg 973.2 kH/s**, range only 971.8–974.5 |
+| Shares received by the pool | 890 in 11 h → **~965 kH/s of real work** (±3 % statistical spread) |
+| Calculation errors (discarded) | **6 of 587,751** candidates (~0.001 %), none reached the pool |
+| Chip temperature (coarse) | 43–46 °C, overheat protection never triggered |
+
+For comparison, same night, same pool: five NerdMiners between 959 and 999 kH/s.
 
 ### Long-term test (v1.0.0)
 
