@@ -11,7 +11,7 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | 1.1.0.003 | 2026-10-13 | J + DPORT-Schutz, verschachtelt | **972** | 942 / 31 | 0 / 1773 Kandidaten | Benchmark 948,6 kH/s, 252 Takte/Hash; 43 °C |
 | 1.1.0.004 | 2026-10-13 | + wsr ps im Write-Abstand | 972 | 942 / 31 | 0 | Benchmark 948,8 kH/s, 252 Takte – **kein Gewinn** |
 | 1.1.0.006 | 2026-10-14 | wie .004 + WLAN-Wächter, Schutzfenster | 973,8 | 942 / 32 | 1 / ~18.900 Kandidaten | Benchmark 948,7 kH/s, 252 Takte; 47 °C, 0 Fehler-Schübe |
-| 1.1.0.007 | 2026-10-14 | O + H7-Lesen in LOAD-Wartezeit (+2) | **1000,5** | 969 / 31 | 0 / 52.403 (Messbetrieb) | Benchmark 971,8 kH/s, 246 Takte; 40–45 °C |
+| 1.1.0.007 | 2026-10-14 | O + H7-Lesen in LOAD-Wartezeit (+2) | **1000,7** | 969 / 31 | 0 / 52.403 (Messbetrieb), 1 / 156.689 (3 h) | Benchmark 971,8 kH/s, 246 Takte; 42–47 °C |
 
 ## 1.1.0.007 – H7-Lesen in der LOAD-Wartezeit, 1000 kH/s
 - Idee: Nach dem LOAD wartet die Schleife ohnehin ~10 Takte (pl2) auf die SHA-Engine. Das geschützte H7-Lesen
@@ -31,7 +31,9 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
   Auf der IP (mit Software-Miner): W/O ~977, d/c ~989, b/a ~1000,5 kH/s. a ist nicht schneller als b → b gewählt.
 - Flashen stückweise (18 × 64 kB, Stück 2 und 3 erst im 3. bzw. 5. Versuch), `verify-flash` OK.
   Selbsttest OK, aktiv „O + DPORT read in LOAD wait +2 (rev. 1)“, Benchmark 971,8 kH/s (246 Takte/Hash).
-- Normalbetrieb ab 18:00: **Ø 1000,5 kH/s** über die ersten Minuten (erst am PC-USB, dann am Netzteil, Werte 998,9–1002,3), 0 HW-Fehler, 0 abgelehnte Shares.
+- Normalbetrieb am Netzteil, Langlauf 14.10. 18:03–20:59 (Logger über WLAN alle 30 s, 352 Werte): **Ø 1000,7 kH/s**
+  (998,5–1002,5), **1 HW-Fehler auf 156.689 Kandidaten** (20:58, nach fast 3 h), 235 Shares angenommen, 1 abgelehnt
+  (19:10, kein HW-Fehler dabei), 0 Neustarts, 42–47 °C, RSSI −53 bis −66 dBm.
 - Rechnerische Grenze auf Rev. 1: zum Rev.-3-Board (ohne Schutz, ~1024 kH/s) fehlen noch ~5 Takte.
 - Screenshot `docs/dashboard_v1.1.0.007.png` (geschwärzt über Nur-Lese-Proxy).
 - Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.007_1000khs.zip`.

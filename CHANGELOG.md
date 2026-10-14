@@ -11,7 +11,8 @@ Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKO
   Schutzfenster unverändert.
 - Messbetrieb (je 10 min, Laufzeit-Kontrolle aus): W 946,4 · O 946,4 · +6 957,7 · +4 957,8 · **+2 969,4** ·
   +0 969,4 kH/s Hardware – **0 von 52.403 Kandidaten verworfen**. +0 bringt keinen Takt mehr als +2, deshalb +2 (Reserve).
-- Normalbetrieb: **Ø 1000,5 kH/s** (Hardware 969 + Software 31) über die ersten Minuten (erst am PC-USB, dann am Netzteil, Werte 998,9–1002,3), 0 abgelehnte Shares.
+- Normalbetrieb: **Ø 1000,7 kH/s** (Hardware 969 + Software 31) über 3 h am Netzteil, 1 HW-Fehler auf 156.689 Kandidaten,
+  235 Shares angenommen, 1 abgelehnt, 0 Neustarts.
 
 ## v1.1.0.006 (2026-10-14) – WLAN-Wächter und Schutzfenster, ~973 kH/s
 - Codestand des USB-C-Projekts v1.3.0.009 übernommen:
