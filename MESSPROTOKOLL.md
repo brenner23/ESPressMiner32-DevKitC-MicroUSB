@@ -10,6 +10,18 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | 1.1.0.002 | 2026-10-13 | J + DPORT-Schutz, vorbereitet | 962 | 931 / 31 | 0 / 1164 Kandidaten | Benchmark 937,6 kH/s, 255 Takte/Hash; 42 °C |
 | 1.1.0.003 | 2026-10-13 | J + DPORT-Schutz, verschachtelt | **972** | 942 / 31 | 0 / 1773 Kandidaten | Benchmark 948,6 kH/s, 252 Takte/Hash; 43 °C |
 | 1.1.0.004 | 2026-10-13 | + wsr ps im Write-Abstand | 972 | 942 / 31 | 0 | Benchmark 948,8 kH/s, 252 Takte – **kein Gewinn** |
+| 1.1.0.006 | 2026-10-14 | wie .004 + WLAN-Wächter, Schutzfenster | **973,8** | 942 / 32 | 1 / ~18.900 Kandidaten | Benchmark 948,7 kH/s, 252 Takte; 47 °C, 0 Fehler-Schübe |
+
+## 1.1.0.006 – Stand USB-C v1.3.0.009 (WLAN-Wächter, Schutzfenster)
+- Code des USB-C-Projekts v1.3.0.009 übernommen, Micro-USB-Teile (alle `_df`-Schleifen, LED GPIO13) behalten.
+  Schutzfenster-Stufe auf Rev. 1: „v2 +2 margin + DPORT protection“ (die Rev.-3-Stufe würde ungeschützt lesen).
+- Flashen stückweise (18 × 64 kB, ein Stück im 2. Versuch), `verify-flash` OK. Selbsttest OK, gewählt
+  „J + DPORT protection, interleaved + wsr (rev. 1)“, Benchmark 948,7 kH/s (252 Takte/Hash).
+- Lauf 14.10. ab 16:14, Logger alle 30 s: **973,7–975,4 kH/s, Ø 973,8**, 1 verworfener Kandidat nach ~3 min
+  (Einzelfehler, kein Schub), danach 0. `guardBursts` 0, `wifiDrops` 0 – die ~600-s-Welle des USB-C-Boards
+  zeigt sich auf ChatMini nicht (schon im Nachtlauf .004 nur 6 Fehler in 11 h). Pool: alle Shares angenommen.
+- Screenshot `docs/dashboard_v1.1.0.006.png` (geschwärzt über Nur-Lese-Proxy).
+- Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.006_973khs.zip`.
 
 ## 1.1.0.005 – nur Texte: Weboberfläche + Konsole englisch
 - Keine Änderung am Hash-Code. Gebaut und die Webseite lokal mit Testdaten geprüft (Dashboard + Einrichtungsfenster);

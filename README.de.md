@@ -21,12 +21,13 @@ mit optionaler externer **LED an GPIO13**.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
 
-Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.003: ~972 kH/s** (Hardware 942 + Software-Miner 31,
+Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.006: ~973 kH/s** (Hardware 942 + Software-Miner 31,
 252 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+24 %**.
 Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.004.png" alt="Dashboard v1.1.0.004 auf ESP32 Rev. 1.0" width="720"><br>
-<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.004 nach 11 h 24 min Nachtlauf – Pool, Worker und WLAN geschwärzt.
+<p align="center"><img src="docs/dashboard_v1.1.0.006.png" alt="Dashboard v1.1.0.006 auf ESP32 Rev. 1.0" width="720"><br>
+<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.006 – Pool, Worker und WLAN geschwärzt.
+Nachtlauf mit v1.1.0.004 (11,1 h, Ø 973,2 kH/s): <a href="docs/nachtlauf_v1.1.0.004.png">Diagramm</a>.
 Konsolen-Ausgabe beim Start (Chip-Revision, Selbsttest, Benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
 > **Der Rev.-1-Fehler:** ESP32 bis Revision 1.x haben einen Hardwarefehler (Espressif-Errata 3.10):
@@ -92,12 +93,16 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 ## Funktionen
 
-- **~972 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.003), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
+- **~973 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.006), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
 - **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
 - **Software-Miner auf Core 0** zusätzlich (~31 kH/s)
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
 - **Selbsttest** beim Start (Genesis-Block, 2000 Zufalls-Header, 5000 Nonces). Schlägt er fehl, wird nicht gemint.
 - **Jeder Treffer wird in Software nachgerechnet**, bevor ein Share zum Pool geht
+- **WLAN-Wächter** (v1.1.0.006): nach 10 s ohne WLAN neu verbinden (Suche über alle Kanäle, z. B. nach einem
+  Kanalwechsel im Mesh), nach 3 min offline Neustart
+- **Schutzfenster** (v1.1.0.006): stört ein Gerät im Netz den ESP32 in festem Takt (auf dem USB-C-Board Fehler-Schübe
+  alle ~600 s), lernt der Miner den Takt und rechnet ein paar Sekunden um den Zeitpunkt herum mit einer vorsichtigeren Schleife
 - **Web-Dashboard** unter `http://espressminer.local/` mit Hashrate-Verlauf, JSON unter `/api/stats` – Oberfläche und Konsole auf Englisch (ab v1.1.0.005)
 - **Primary- und Secondary-Pool** mit automatischem Wechsel
 - **Einrichtung ohne Programmieren:** WLAN-Portal, Setup-Programm mit Oberfläche oder Kommandozeile
@@ -202,7 +207,8 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 | v1.0.0: kalibrierte Pipeline, jedes Lesen geschützt | 786 |
 | v1.1.0.001: Variante J, nur das H7-Lesen geschützt | ~950 |
 | v1.1.0.002: Schutz in der LOAD-Wartezeit vorbereitet | ~962 |
-| **v1.1.0.003: Schutz mit den Header-Writes verschachtelt** | **~972** |
+| v1.1.0.003: Schutz mit den Header-Writes verschachtelt | ~972 |
+| **v1.1.0.006: gleiche Schleife + WLAN-Wächter und Schutzfenster** | **~973** |
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete

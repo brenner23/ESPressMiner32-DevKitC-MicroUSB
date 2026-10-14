@@ -3,6 +3,18 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.006 (2026-10-14) – WLAN-Wächter und Schutzfenster, ~973 kH/s
+- Codestand des USB-C-Projekts v1.3.0.009 übernommen:
+  - **WLAN-Wächter:** nach 10 s ohne WLAN neu verbinden (Suche über alle Kanäle, z. B. nach Kanalwechsel im Mesh),
+    nach 3 min offline Neustart. Vorher konnte der Miner nach einem Kanalwechsel dauerhaft offline bleiben.
+  - **Schutzfenster:** Fehler-Schübe in festem Takt (USB-C-Board: alle ~600 s durch ein Gerät im Netz) werden
+    erkannt; nach zwei Schüben rechnet der Miner einige Sekunden um den erwarteten Zeitpunkt mit einer
+    vorsichtigeren Schleife. Auf Rev. 1 ist das „v2 +2 margin + DPORT protection“ (nie ungeschützt lesen).
+  - Neue Felder in `/api/stats`: `channel`, `wifiDrops`, `wifiReconnects`, `wifiLastReason`, `guardActive`,
+    `guardPeriodS`, `guardNextInS`, `guardBursts`, `guardWindows`, `guardErrors`.
+- Hash-Schleife unverändert (dfw wie .004, 252 Takte), gemessen **~973,8 kH/s**, 1 von ~18.900 Kandidaten verworfen
+  (Einzelfehler in Minute 3), 0 abgelehnte Shares. Auf ChatMini trat in den ersten 25 min kein Fehler-Schub auf.
+
 ## v1.1.0.005 (2026-10-14) – Weboberfläche und Konsole auf Englisch
 - Dashboard, Einstellungen/Einrichtungs-Portal, Meldungen beim Speichern und Überhitzungsstatus komplett englisch
   (Settings, Blocks found, Save & restart, …), damit das Projekt auch international nutzbar ist.
