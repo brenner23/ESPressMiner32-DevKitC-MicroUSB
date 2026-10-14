@@ -54,6 +54,10 @@ Test board (ESP32-D0WDQ6 rev. 1.0) on our own stratum pool, software miner on, l
 
 For comparison, same night, same pool: five NerdMiners between 959 and 999 kH/s.
 
+<p align="center"><img src="docs/nachtlauf_v1.1.0.004.png" alt="Night run v1.1.0.004: hashrate, pool shares per hour, temperature, calculation errors" width="900"><br>
+<sub>The night (until 09:07): hashrate reported by the miner, shares per hour at the pool (× 11.93 = kH/s), chip temperature and
+discarded calculation errors. Raw data of all samples: <a href="docs/nachtlauf_v1.1.0.004.csv">docs/nachtlauf_v1.1.0.004.csv</a></sub></p>
+
 ### Long-term test (v1.0.0)
 
 One board of this variant runs continuously (outdoor enclosure, Wi-Fi via repeater) on the public pool

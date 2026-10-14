@@ -55,6 +55,10 @@ Testboard (ESP32-D0WDQ6 Rev. 1.0) am eigenen Stratum-Pool, Software-Miner an, Pr
 
 Zum Vergleich in derselben Nacht am selben Pool: fünf NerdMiner zwischen 959 und 999 kH/s.
 
+<p align="center"><img src="docs/nachtlauf_v1.1.0.004.png" alt="Nachtlauf v1.1.0.004: Hashrate, Pool-Shares je Stunde, Temperatur, Rechenfehler" width="900"><br>
+<sub>Verlauf der Nacht (bis 09:07): Hashrate laut Miner, Shares je Stunde am Pool (× 11,93 = kH/s), Chip-Temperatur und
+verworfene Rechenfehler. Rohdaten aller Messpunkte: <a href="docs/nachtlauf_v1.1.0.004.csv">docs/nachtlauf_v1.1.0.004.csv</a></sub></p>
+
 ### Langzeittest (v1.0.0)
 
 Ein Board dieser Variante läuft im Dauerbetrieb (Außengehäuse, WLAN über Repeater) am öffentlichen Pool
