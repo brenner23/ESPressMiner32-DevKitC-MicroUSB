@@ -53,7 +53,7 @@ bool settings_load()
     if (!s_configured && load_from(NVS_LEGACY)) {
         settings_save(g_settings);
         clear_ns(NVS_LEGACY);
-        Serial.println("[Settings] Settings migrated from old namespace");
+        Serial.println("[Settings] Settings taken over from old namespace");
     } else if (!s_configured) {
         load_from(NVS_NAMESPACE);   // Vorbelegung aus credentials.h
     }

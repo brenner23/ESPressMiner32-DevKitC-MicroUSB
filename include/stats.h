@@ -24,6 +24,17 @@ struct MinerStats {
     volatile double   networkDiff;
     volatile float    chipTemp;         // Grad C, grob (interner Sensor), 0 = noch nicht gelesen
 
+    // Ab 1.3.0.008: WLAN-Waechter und Schutzfenster
+    volatile uint32_t wifiDrops;        // WLAN-Verbindung verloren
+    volatile uint32_t wifiReconnects;   // vom Waechter neu verbunden
+    volatile int      wifiLastReason;   // letzter Trenngrund (ESP-IDF wifi_err_reason_t)
+    volatile uint32_t guardBursts;      // erkannte Fehlerschuebe
+    volatile uint32_t guardWindows;     // geoeffnete Schutzfenster
+    volatile uint32_t guardErrors;      // HW-Fehler innerhalb eines Schutzfensters
+    volatile uint32_t burstErrors;      // HW-Fehler, die zu einem erkannten Schub gehoeren
+    volatile uint32_t guardPeriodMs;    // gelernter Takt (0 = noch unbekannt)
+    volatile int32_t  guardNextInS;     // naechstes Fenster in s (-1 = unbekannt)
+
     // Vom Statistik-Task berechnet (fuer die Webseite)
     volatile float    khCurrent;
     volatile float    khAverage;

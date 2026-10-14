@@ -42,6 +42,9 @@ void     hw_sha_set_guard(uint32_t g);   // nur Assembler-Schleife
 bool        hw_sha_select_loop();
 void        hw_sha_report_candidate(bool confirmed);   // Laufzeit-Kontrolle
 const char* hw_sha_loop_name();
+// Ab 1.3.0.008: Schutzfenster - kurz auf die vorsichtigere Stufe "v2 +2 margin" und zurueck
+void        hw_sha_guard(bool on);
+bool        hw_sha_guard_active();
 
 // Master 004: Messbetrieb (HW_LOOP_TEST) - Varianten der v2-Schleife durchprobieren
 int         hw_sha_variant_count();

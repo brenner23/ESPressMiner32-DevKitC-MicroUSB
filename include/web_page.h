@@ -39,7 +39,7 @@ td:last-child{text-align:right;font-variant-numeric:tabular-nums;word-break:brea
 .swbtn{background:var(--card);color:var(--accent);border:1px solid var(--line);border-radius:7px;
 padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px;transition:.12s}
 .swbtn:hover{border-color:var(--accent)}.swbtn:disabled{opacity:.6;cursor:default}
-/* --- Settings dialog --- */
+/* --- Einstellungsfenster --- */
 .ov{position:fixed;inset:0;background:rgba(10,12,20,.55);backdrop-filter:blur(2px);display:none;
 align-items:flex-start;justify-content:center;overflow:auto;padding:26px 16px;z-index:9}
 .ov.open{display:flex}
@@ -104,7 +104,7 @@ border-radius:8px;padding:9px 10px;font-size:14px}
   <div class="seg"><button type="button" id="thDark" onclick="setTheme('dark')">Dark</button><button type="button" id="thLight" onclick="setTheme('light')">Light</button></div>
  </div>
  <div class="mbody">
-  <p class="intro" id="cintro" style="display:none">Welcome! Please enter a name, your Wi-Fi and the pool. The miner then restarts and connects to your Wi-Fi.</p>
+  <p class="intro" id="cintro" style="display:none">Welcome! Enter a name, your Wi-Fi and the pool. The miner then restarts and connects to your Wi-Fi.</p>
   <div class="sec">
    <div class="sec-h">General</div>
    <div class="fld"><label for="c_name">Display name</label><input id="c_name" maxlength="32" placeholder="ESP32 Miner"></div>
@@ -129,7 +129,7 @@ border-radius:8px;padding:9px 10px;font-size:14px}
   </div>
   <div class="sec">
    <div class="sec-h">Pool switching</div>
-   <div class="fld"><label for="c_altmin">Alternate automatically: every N minutes &nbsp;(0 = off, switch only on failure)</label><input id="c_altmin" type="number" min="0" max="1440" value="0"></div>
+   <div class="fld"><label for="c_altmin">Alternate automatically every N minutes &nbsp;(0 = off, switch on failure only)</label><input id="c_altmin" type="number" min="0" max="1440" value="0"></div>
   </div>
  </div>
  <div class="mfoot">
@@ -172,7 +172,7 @@ async function saveCfg(){const m=$('cmsg'),b=$('csave');
  m.className='msg ok';
  if(portal){m.textContent='Saved! Restarting and connecting to "'+body.wifiSsid+'". Then open: http://'+body.hostname+'.local/';return}
  m.textContent='Saved. Miner is restarting (about 15 s) ...';waitBack()}
- catch(e){m.className='msg err';m.textContent='Error while saving';b.disabled=false}}
+ catch(e){m.className='msg err';m.textContent='Saving failed';b.disabled=false}}
 function waitBack(){setTimeout(async function p(){try{await fetch('/api/stats',{cache:'no-store'});location.reload()}catch(e){setTimeout(p,2000)}},8000)}
 async function switchPool(){const b=$('swbtn');b.disabled=true;const old=b.innerHTML;b.textContent='switching ...';
  try{const r=await fetch('/api/switchpool',{method:'POST'});await r.text()}catch(e){}

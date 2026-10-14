@@ -343,7 +343,7 @@ void StratumClient::run()
         uint32_t altMs = (uint32_t)g_settings.poolAltMin * 60000UL;
         if (altMs && poolConfigured(0) && poolConfigured(1) &&
             millis() - _poolSinceMs > altMs) {
-            disconnect("Pool-Wechsel (abwechselnd)");
+            disconnect("pool switch (alternating)");
             selectPool(1 - _poolIdx);
         }
 
@@ -383,7 +383,7 @@ void StratumClient::run()
         // Im Failover-Modus (kein Abwechseln): vom Secondary regelmaessig zurueck zum Primary
         if (!altMs && _poolIdx == 1 && poolConfigured(0) &&
             millis() - _poolSinceMs > SECONDARY_RETRY_PRIMARY) {
-            disconnect("versuche wieder den Primary Pool");
+            disconnect("retrying the primary pool");
             selectPool(0);
         }
 

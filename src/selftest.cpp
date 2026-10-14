@@ -128,13 +128,13 @@ bool selftest_calibrate()
     static const char* names[5] = { "Block 1", "Block 2", "Hash 2", "Load 1", "Load 2" };
 
     // Jede Phase einzeln minimal suchen, dann gemeinsam nachschaerfen
-    // Aeltere Chips (DPORT-Workaround): Die geschuetzte Leseroutine verzoegert das Auslesen
-    // und laesst zu kurze Wartezeiten faelschlich fehlerfrei aussehen -> Untergrenze fuer
-    // Block 1 (zaehlt ab START, wie in v1.0.0 der Micro-USB-Variante)
     for (int i = 0; i < 5; i++) {
+        // Aeltere Chips (DPORT-Workaround): Die geschuetzte Leseroutine verzoegert das Auslesen
+        // und laesst zu kurze Wartezeiten faelschlich fehlerfrei aussehen -> Untergrenze fuer
+        // Block 1 (zaehlt ab START, wie in v1.0.0 der Micro-USB-Variante)
         const uint32_t from = (i == 0 && hw_sha_dport_fix()) ? 58 : 0;
         if (!find_min(tm, fields[i], from, safeVal[i])) {
-            Serial.printf("  No error-free wait time found for %s\n", names[i]);
+            Serial.printf("  No error-free delay found for %s\n", names[i]);
             return false;
         }
     }
@@ -278,7 +278,7 @@ void selftest_long_test(uint32_t margin, uint32_t minutes)
     for (int i = 0; i < 3; i++) tm.block[i] += margin;
     for (int i = 0; i < 2; i++) tm.load[i] += margin;
     hw_sha_set_timing(tm);
-    Serial.printf("[Long-term test] margin %lu (%lu/%lu/%lu load %lu/%lu), %lu minutes, Wi-Fi active\n",
+    Serial.printf("[Long test] margin %lu (%lu/%lu/%lu load %lu/%lu), %lu minutes, Wi-Fi active\n",
                   (unsigned long)margin, (unsigned long)tm.block[0], (unsigned long)tm.block[1],
                   (unsigned long)tm.block[2], (unsigned long)tm.load[0], (unsigned long)tm.load[1],
                   (unsigned long)minutes);

@@ -10,7 +10,7 @@ Nur Python-Standardbibliothek.
   python3 miner_logger.py NAME=IP [NAME=IP ...] [--intervall 120] [--stunden 18] [--ordner .]
 
 Beispiel (im Hintergrund per screen):
-  screen -dmS testlogger python3 miner_logger.py USB-C=192.168.0.100 MicroUSB=192.168.0.101
+  screen -dmS testlogger python3 miner_logger.py USB-C=<ESP-IP> MicroUSB=<ESP-IP>
   screen -r testlogger      (wieder ansehen, Ctrl-A D = loesen)
 
 Auswertung, z.B. Mittelwert ueber die Nacht: Spalte "average" der letzten Zeile (Mittel seit Start

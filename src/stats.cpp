@@ -69,8 +69,8 @@ void stats_task(void*)
             (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60), (unsigned long)(up % 60),
             khHw + khSw, khHw, khSw, avg,
             (unsigned long)rej, (unsigned long)acc, quote, best, pool, net,
-            WiFi.isConnected() ? "WiFi " : "WiFi-AUS ",
-            g_stats.poolAuthorized ? "Pool OK" : (g_stats.poolConnected ? "Pool..." : "Pool-AUS"));
+            WiFi.isConnected() ? "WiFi " : "WiFi-OFF ",
+            g_stats.poolAuthorized ? "Pool OK" : (g_stats.poolConnected ? "Pool..." : "Pool-OFF"));
 
         // Projekt-Kennung jede Minute
         static uint32_t lastId = 0;

@@ -17,14 +17,18 @@
 #include "stratum_client.h"
 #include "web_server.h"
 #include "serial_config.h"
+#include "diag.h"
 
 static StratumClient g_stratum;
 
 #if HW_LOOP_TEST
 // Reihenfolge: A = v2 schnell (Referenz), dann B..G (siehe hw_scan_v2.S)
 // Runde 2 (nach Runde 1: H/M fallen unter Last durch, p1 muss 4 bleiben)
-static const int  LT_IDX[]   = { 10, 11, 12, 15, 5, 0 };
-static const char LT_TAG[]   = "IJKNDA";
+// 1.3.0.009: J (Referenz) gegen die Feinvarianten O/P/Q/R (siehe hw_scan_v2.S)
+// Micro-USB (Rev. 1): nur _df-Varianten (Indizes ab V2_DF0 = 20 in sha256_hw.cpp),
+// Kennbuchstabe = Schritt: 4 = dfw (.004), 3 = dfp (.003), 2 = dfo (.002), 1 = J_df (.001)
+static const int  LT_IDX[]   = { 26, 25, 24, 20 };
+static const char LT_TAG[]   = "4321";
 static const int  LT_N       = sizeof(LT_IDX) / sizeof(LT_IDX[0]);
 static bool  s_ltOk[LT_N];
 static float s_ltCyc[LT_N];
@@ -32,7 +36,7 @@ static float s_ltCyc[LT_N];
 // Vor dem Mining (Engine frei): Known-Answer-Test und Takte je Variante
 static void loop_test_prepare()
 {
-    Serial.println("[Loop test] Hash loop variants:");
+    Serial.println("[Loop test] hash loop variants:");
     for (int k = 0; k < LT_N; k++) {
         s_ltOk[k]  = hw_sha_variant_selftest(LT_IDX[k]) || hw_sha_variant_selftest(LT_IDX[k]);
         s_ltCyc[k] = hw_sha_variant_cycles(LT_IDX[k]);
@@ -45,7 +49,9 @@ static void loop_test_prepare()
 // Waehrend des Minings: reihum je HW_LOOP_TEST Minuten, Summen je Variante
 static void loop_test_task(void*)
 {
-    uint64_t sumH[LT_N] = {}; uint32_t sumC[LT_N] = {}, sumE[LT_N] = {}; float sumT[LT_N] = {};
+    // sumE = Fehler AUSSERHALB von Schutzfenster und erkannten Schueben (= Fehler der Schleife selbst),
+    // sumW = Fehler der WLAN-Welle (im Fenster oder als Schub erkannt) - zaehlen nicht gegen die Variante
+    uint64_t sumH[LT_N] = {}; uint32_t sumC[LT_N] = {}, sumE[LT_N] = {}, sumW[LT_N] = {}; float sumT[LT_N] = {};
     vTaskDelay(pdMS_TO_TICKS(15000));          // Pool-Verbindung abwarten
     for (int round = 1;; round++) {
         for (int k = 0; k < LT_N; k++) {
@@ -53,32 +59,39 @@ static void loop_test_task(void*)
             hw_sha_set_variant(LT_IDX[k]);
             vTaskDelay(pdMS_TO_TICKS(3000));    // Umschalten abwarten
             const uint32_t h0 = g_stats.hwHashes, c0 = g_stats.hwCandidates, e0 = g_stats.hwErrors;
+            const uint32_t w0 = g_stats.guardErrors + g_stats.burstErrors;
             const uint32_t t0 = millis();
             // jede Minute: neue Fehler dieser Minute (Verlauf statt nur Summe)
             for (int m = 1; m <= HW_LOOP_TEST; m++) {
                 const uint32_t cm = g_stats.hwCandidates, em = g_stats.hwErrors;
+                const uint32_t wm = g_stats.guardErrors + g_stats.burstErrors;
                 vTaskDelay(pdMS_TO_TICKS(60000UL));
-                Serial.printf("[Loop test] %c minute %d: %lu candidates, %lu discarded\n", LT_TAG[k], m,
-                              (unsigned long)(g_stats.hwCandidates - cm), (unsigned long)(g_stats.hwErrors - em));
+                const uint32_t wave = g_stats.guardErrors + g_stats.burstErrors - wm;
+                Serial.printf("[Loop test] %c minute %d: %lu candidates, %lu discarded (%lu of them WiFi wave)\n",
+                              LT_TAG[k], m, (unsigned long)(g_stats.hwCandidates - cm),
+                              (unsigned long)(g_stats.hwErrors - em), (unsigned long)wave);
             }
             const float dt = (millis() - t0) / 1000.0f;
             sumH[k] += (uint32_t)(g_stats.hwHashes - h0);
             sumC[k] += g_stats.hwCandidates - c0;
-            sumE[k] += g_stats.hwErrors - e0;
+            const uint32_t w = g_stats.guardErrors + g_stats.burstErrors - w0;
+            const uint32_t eAll = g_stats.hwErrors - e0;
+            sumW[k] += w;
+            sumE[k] += eAll > w ? eAll - w : 0;
             sumT[k] += dt;
 
             // Bericht: HW-Hashrate, Fehlerquote = verworfene / alle HW-Kandidaten,
             // effektiv = Hashrate * (1 - Fehlerquote)
             int len = snprintf(g_loopTest, sizeof(g_loopTest),
-                               "Round %d | Var | kH/s HW | cycles(bench) | cand | discarded | error%% | effective\n", round);
+                               "Round %d | var | kH/s HW | cycles(bench) | cand | own errors | wave | own error%% | effective\n", round);
             for (int j = 0; j < LT_N && len < (int)sizeof(g_loopTest) - 120; j++) {
                 if (!sumT[j]) continue;
                 const float kh  = sumH[j] / sumT[j] / 1000.0f;
                 const float err = sumC[j] ? 100.0f * sumE[j] / sumC[j] : 0.0f;
                 len += snprintf(g_loopTest + len, sizeof(g_loopTest) - len,
-                                "%c %-28s | %6.1f | %5.1f | %6lu | %5lu | %6.3f | %6.1f\n", LT_TAG[j],
+                                "%c %-28s | %6.1f | %5.1f | %6lu | %5lu | %4lu | %6.3f | %6.1f\n", LT_TAG[j],
                                 hw_sha_variant_name(LT_IDX[j]), kh, s_ltCyc[j], (unsigned long)sumC[j],
-                                (unsigned long)sumE[j], err, kh * (1.0f - err / 100.0f));
+                                (unsigned long)sumE[j], (unsigned long)sumW[j], err, kh * (1.0f - err / 100.0f));
             }
             Serial.print("[Loop test]\n");
             Serial.print(g_loopTest);
@@ -116,6 +129,64 @@ static void led_task(void*)
 #endif
 }
 
+// Ab 1.3.0.008: immer alle Kanaele absuchen und im Mesh den staerksten Knoten nehmen,
+// nichts im NVS zwischenspeichern (sonst wird ein alter Kanal / Knoten weiterverwendet)
+static void wifi_connect()
+{
+    WiFi.persistent(false);
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+    WiFi.begin(g_settings.wifiSsid.c_str(), g_settings.wifiPass.c_str());
+}
+
+static void wifi_event(arduino_event_id_t event, arduino_event_info_t info)
+{
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        g_stats.wifiLastReason = info.wifi_sta_disconnected.reason;
+    } else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+        Serial.printf("[WiFi] connected, IP %s, channel %d, RSSI %d dBm\n", WiFi.localIP().toString().c_str(),
+                      WiFi.channel(), WiFi.RSSI());
+    }
+}
+
+// WLAN-Waechter (ab 1.3.0.008): 1.3.0.007 blieb nach einem Kanalwechsel im Mesh dauerhaft
+// offline. Ist das WLAN weg, wird nach WIFI_RECONNECT_AFTER_MS selbst neu verbunden (alle
+// WIFI_RECONNECT_EVERY_MS erneut); nach WIFI_REBOOT_AFTER_MS hilft nur noch ein Neustart.
+static void wifi_watch_task(void*)
+{
+    uint32_t lostAt = 0, lastTry = 0;
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        if (web_portal_active() && !g_settings.wifiSsid.length()) continue;
+        const uint32_t now = millis();
+        if (WiFi.status() == WL_CONNECTED) {
+            if (lostAt) Serial.printf("[WiFi] back after %lu s\n", (unsigned long)((now - lostAt) / 1000));
+            lostAt = 0;
+            continue;
+        }
+        if (!lostAt) {
+            lostAt = now;
+            lastTry = now;
+            g_stats.wifiDrops++;
+            Serial.printf("[WiFi] connection lost (reason %d)\n", g_stats.wifiLastReason);
+            continue;
+        }
+        if (now - lostAt >= WIFI_REBOOT_AFTER_MS && !web_portal_active()) {   // Portal nicht abschiessen
+            Serial.println("[WiFi] still offline - restarting");
+            delay(200);
+            ESP.restart();
+        }
+        if (now - lostAt >= WIFI_RECONNECT_AFTER_MS && now - lastTry >= WIFI_RECONNECT_EVERY_MS - 1000) {
+            lastTry = now;
+            g_stats.wifiReconnects++;
+            Serial.printf("[WiFi] reconnecting (scan all channels, reason %d)\n", g_stats.wifiLastReason);
+            WiFi.disconnect(false, false);
+            vTaskDelay(pdMS_TO_TICKS(200));
+            wifi_connect();
+        }
+    }
+}
+
 // true = verbunden
 static bool wifi_begin()
 {
@@ -123,7 +194,8 @@ static bool wifi_begin()
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
     WiFi.setAutoReconnect(true);
-    WiFi.begin(g_settings.wifiSsid.c_str(), g_settings.wifiPass.c_str());
+    WiFi.onEvent(wifi_event);
+    wifi_connect();
 
     Serial.printf("[WiFi] Connecting to \"%s\" ", g_settings.wifiSsid.c_str());
     uint32_t t0 = millis();
@@ -149,8 +221,8 @@ void setup()
     Serial.println("==============================================");
     Serial.println("  " MINER_NAME " v" MINER_VERSION "  -  ESP32 Bitcoin Miner");
     {
-        static const char* RR[] = { "unknown", "power-on", "extern", "Software", "PANIC (crash)",
-                                    "interrupt watchdog", "task watchdog", "Watchdog", "Deep-Sleep",
+        static const char* RR[] = { "unknown", "power-on", "external", "software", "panic (crash)",
+                                    "interrupt watchdog", "task watchdog", "watchdog", "deep sleep",
                                     "brownout (voltage)", "SDIO" };
         const int r = (int)esp_reset_reason();
         g_resetReason = (r >= 0 && r < (int)(sizeof(RR) / sizeof(RR[0]))) ? RR[r] : "?";
@@ -183,7 +255,7 @@ void setup()
     bool calibrated = false;
     for (int attempt = 0; attempt < 3 && !calibrated && !v2; attempt++) calibrated = selftest_calibrate();
     if (!calibrated && !v2) {
-        Serial.println("CALIBRATION FAILED - using safe default timings.");
+        Serial.println("CALIBRATION FAILED - using safe default values.");
         hw_sha_set_timing(HW_TIMING_SAFE);
     }
     if (!selftest_run()) {
@@ -210,6 +282,8 @@ void setup()
     }
 
     if (!wifi_begin()) web_start_portal(true);
+    xTaskCreatePinnedToCore(wifi_watch_task, "wifiWatch", 3072, nullptr, 1, nullptr, 0);
+    diag_begin();               // nur im Test-Build (DIAG_NET) aktiv
     g_stratum.begin();
 
     xTaskCreatePinnedToCore(stratum_task, "stratum", 12288, nullptr, 3, nullptr, 0);
@@ -224,6 +298,7 @@ void setup()
     selftest_long_test(1, 10);
 #endif
     xTaskCreatePinnedToCore(miner::hw_task, "minerHW", 4096, nullptr, 2, nullptr, HW_MINER_CORE);
+    xTaskCreatePinnedToCore(guard::task, "guard", 3072, nullptr, 2, nullptr, 0);
 #if HW_LOOP_TEST
     xTaskCreatePinnedToCore(loop_test_task, "looptest", 4096, nullptr, 1, nullptr, 0);
 #endif

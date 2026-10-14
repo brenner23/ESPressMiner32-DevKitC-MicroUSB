@@ -460,5 +460,11 @@
     PL_MINE   hw_v2_fast_df,   .iram1.hwdf2, 4, 16, 40, 10, 14, 27, 10, 2, 1, 1
     PL_MINE   hw_v2_margin_df, .iram1.hwdf3, 6, 16, 42, 12, 14, 29, 12, 2, 1, 1
     PL_MINE   hw_v2_wide_df,   .iram1.hwdf4, 18, 16, 54, 24, 14, 41, 24, 2, 1, 1
+    // 1.3.0.009: I und D hatten ihre Fehler nur durch die WLAN-Welle -> I + J kombinieren
+    // und Block 2 / LOAD->START weiter kuerzen (p3 und p1 bleiben sicher, siehe K und H)
+    PL_MINE_R hw_t_o,     .iram1.hwto,  4, 16, 39,  9, 14, 27, 10, 2, 1, 1
+    PL_MINE_R hw_t_p,     .iram1.hwtp,  4, 16, 38,  9, 14, 27, 10, 2, 1, 1
+    PL_MINE_R hw_t_q,     .iram1.hwtq2, 4, 16, 39,  8, 14, 27, 10, 2, 1, 1
+    PL_MINE_R hw_t_r,     .iram1.hwtr,  4, 15, 39,  9, 14, 27, 10, 2, 1, 1
 
 #endif

@@ -4,7 +4,13 @@
 // ---------------------------------------------------------------------------
 
 #define MINER_NAME        "ESPressMiner32"
-#define MINER_VERSION     "1.1.0.005"   // Micro-USB, Schritt 005: Weboberflaeche und Konsole auf Englisch (Hash-Code unveraendert)
+#if HW_LOOP_TEST
+#define MINER_VERSION     "1.1.0.006-looptest"   // Messbetrieb Micro-USB: _df-Varianten .001-.004
+#elif DIAG_NET
+#define MINER_VERSION     "1.1.0.006-diag"   // Test-Build: Netz-Diagnose /api/diag (10-Minuten-Fehlerschub)
+#else
+#define MINER_VERSION     "1.1.0.006"   // Micro-USB, Schritt 006: Stand USB-C v1.3.0.009 (WLAN-Waechter, Schutzfenster) + _df-Schleifen
+#endif
 #define MINER_REPO_URL    "https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB"
 
 // Difficulty, die beim Pool angefragt wird (mining.suggest_difficulty).
@@ -36,6 +42,13 @@
 // Nonces pro Durchlauf, bevor auf einen neuen Job geprueft wird
 #define HW_BATCH_SIZE            8192
 #define SW_BATCH_SIZE            1024
+
+// HW-Miner (Core 1): Zwangspause von 1 Tick alle HW_YIELD_MS. 0 = keine Pause (ab 1.3.0.006).
+// Auf Core 1 laeuft sonst nichts (loopTask beendet, Watchdog prueft IDLE1 nicht), die Pause
+// kostete ~0,2 % (1 ms je 500 ms). Zurueck: 500.
+#ifndef HW_YIELD_MS
+#define HW_YIELD_MS              0
+#endif
 
 // Sicherheitsabstand (CPU-Takte) auf die beim Start gemessenen Grenzwerte
 // der Hardware-Pipeline. Kleiner = schneller, groesser = mehr Reserve.
@@ -81,6 +94,33 @@
 #define PORTAL_AP_PASSWORD       "espressminer"
 // So lange wird beim Start auf das gespeicherte WLAN gewartet, dann Portal zusaetzlich an
 #define WIFI_CONNECT_TIMEOUT_MS  20000UL
+
+// WLAN-Waechter (ab 1.3.0.008): Nach einem Kanalwechsel im Mesh blieb 1.3.0.007 dauerhaft
+// offline. Ist das WLAN so lange weg, wird neu verbunden (Suche ueber alle Kanaele) ...
+#define WIFI_RECONNECT_AFTER_MS  10000UL
+#define WIFI_RECONNECT_EVERY_MS  20000UL
+// ... und hilft das nicht, startet der Miner neu.
+#define WIFI_REBOOT_AFTER_MS     (3UL * 60UL * 1000UL)
+
+// Schutzfenster (ab 1.3.0.008): Ein Geraet im Netz (Mesh/Router) stoert den ESP alle
+// ~600 s fuer einen Augenblick (4-8 HW-Fehler auf einen Schlag). Der Miner lernt diesen
+// Takt und rechnet um den erwarteten Zeitpunkt herum mit einer vorsichtigeren Schleife.
+#ifndef HW_GUARD_ENABLE
+#define HW_GUARD_ENABLE          1
+#endif
+#define HW_GUARD_BURST_ERRORS    2        // so viele HW-Fehler ...
+#define HW_GUARD_BURST_MS        2000UL   // ... innerhalb dieser Zeit = Schub
+#define HW_GUARD_PERIOD_MIN_MS   60000UL  // erlaubter Takt 1 .. 30 min (hier gemessen: 600,47 s)
+#define HW_GUARD_PERIOD_MAX_MS   1800000UL
+#define HW_GUARD_BEFORE_MS       6000UL   // Fenster vor ...
+#define HW_GUARD_AFTER_MS        6000UL   // ... und nach dem erwarteten Schub
+#ifndef HW_GUARD_PROBE_EVERY
+#if HW_LOOP_TEST
+#define HW_GUARD_PROBE_EVERY     1000000  // Messbetrieb: keine Stichprobe (Welle soll nie ins Ergebnis)
+#else
+#define HW_GUARD_PROBE_EVERY     6        // jedes 6. Fenster ungeschuetzt (Stichprobe: Welle noch da?)
+#endif
+#endif
 
 // Optionale externe LED an GPIO13 (ESP32-DevKitC 38-Pin Micro-USB, neben GND, mit Vorwiderstand gegen GND):
 // leuchtet, solange gemint wird; kurz aus bei jedem Share. -1 = aus

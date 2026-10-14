@@ -118,12 +118,12 @@ void hw_sha_begin()
     // anfasst und stattdessen Software-SHA nutzt.
     if (!esp_sha_try_lock_engine(SHA1))     Serial.println("[HW-SHA] SHA1 engine busy");
     if (!esp_sha_try_lock_engine(SHA2_256)) Serial.println("[HW-SHA] SHA256 engine busy");
-    Serial.println("[HW-SHA] Accelerator reserved");
+    Serial.println("[HW-SHA] accelerator reserved");
 
     const unsigned major = efuse_hal_get_major_chip_version();
     const unsigned minor = efuse_hal_get_minor_chip_version();
     s_dportFix = major < 3;
-    Serial.printf("[HW-SHA] Chip-Revision v%u.%u%s\n", major, minor,
+    Serial.printf("[HW-SHA] chip revision v%u.%u%s\n", major, minor,
                   s_dportFix ? " -> DPORT workaround active (older ESP32)" : "");
 }
 
@@ -269,7 +269,7 @@ static_assert(offsetof(HwScanArgs, b1) == 0 && offsetof(HwScanArgs, b2) == 4 &&
               offsetof(HwScanArgs, mask) == 16 && offsetof(HwScanArgs, cands) == 20 &&
               offsetof(HwScanArgs, maxCands) == 24 && offsetof(HwScanArgs, found) == 28 &&
               offsetof(HwScanArgs, d0) == 32 && offsetof(HwScanArgs, l2) == 48 &&
-              offsetof(HwScanArgs, guard) == 52, "Offsets do not match hw_scan_asm.S");
+              offsetof(HwScanArgs, guard) == 52, "Offsets passen nicht zu hw_scan_asm.S");
 
 extern "C" uint32_t hw_scan_asm(HwScanArgs* a);
 
@@ -329,7 +329,7 @@ struct HwV2Ctx {
 };
 static_assert(offsetof(HwV2Ctx, apb) == 76 && offsetof(HwV2Ctx, nonce) == 80 && offsetof(HwV2Ctx, budget) == 84 &&
               offsetof(HwV2Ctx, run) == 88 && offsetof(HwV2Ctx, pad) == 92,
-              "Offsets do not match hw_scan_v2.S");
+              "Offsets passen nicht zu hw_scan_v2.S");
 
 typedef uint32_t (*HwV2Fn)(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_fast(volatile uint32_t* sha_base, HwV2Ctx* ctx);
@@ -349,11 +349,15 @@ extern "C" uint32_t hw_t_d_p3(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl2(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_q4(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_n(volatile uint32_t* sha_base, HwV2Ctx* ctx);
-// Micro-USB: dieselben Schleifen mit geschuetztem H7-Lesen fuer Chips vor Rev. 3
+extern "C" uint32_t hw_t_o(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_p(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_q(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_r(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+// Micro-USB: Schleifen mit geschuetztem H7-Lesen fuer Chips vor Rev. 3 (Errata 3.10)
+extern "C" uint32_t hw_t_d_pl1_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_fast_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_margin_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_v2_wide_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
-extern "C" uint32_t hw_t_d_pl1_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfo(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfp(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfw(volatile uint32_t* sha_base, HwV2Ctx* ctx);
@@ -364,11 +368,11 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_wide,   "v2 wide margin (317 cycles)" },
     // ab hier nur im Messbetrieb (nicht Teil der Rueckfallkette)
     { hw_t_quiet,   "B quiet delays" },
-    { hw_t_r3,      "C registers, spacing 3" },
-    { hw_t_r2,      "D registers, spacing 2" },
-    { hw_t_r1,      "E registers, spacing 1" },
-    { hw_t_r2q,     "F registers, spacing 2, quiet" },
-    { hw_t_r1q,     "G registers, spacing 1, quiet" },
+    { hw_t_r3,      "C registers, gap 3" },
+    { hw_t_r2,      "D registers, gap 2" },
+    { hw_t_r1,      "E registers, gap 1" },
+    { hw_t_r2q,     "F registers, gap 2, quiet" },
+    { hw_t_r1q,     "G registers, gap 1, quiet" },
     { hw_t_d_p1,    "H D + p1 quiet" },
     { hw_t_d_p2,    "I D + p2 quiet" },
     { hw_t_d_pl1,   "J registers + pl1 quiet (241 cycles)" },
@@ -376,7 +380,11 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_t_d_pl2,   "L D + pl2 quiet" },
     { hw_t_d_q4,    "M D + quiet except pl2" },
     { hw_t_n,       "N D + p2 pl1 p3 quiet" },
-    // Micro-USB: Chips vor Rev. 3 (Errata 3.10), H7 geschuetzt gelesen
+    { hw_t_o,       "O registers + p2 pl1 quiet (240 cycles)" },
+    { hw_t_p,       "P O + p2 -1" },
+    { hw_t_q,       "Q O + pl1 -1" },
+    { hw_t_r,       "R O + d2 -1" },
+    // ---- Micro-USB: ab hier Varianten fuer Chips vor Rev. 3 (H7 geschuetzt gelesen) ----
     { hw_t_d_pl1_df,   "J + DPORT protection (rev. 1)" },
     { hw_v2_fast_df,   "v2 fast + DPORT protection (rev. 1)" },
     { hw_v2_margin_df, "v2 +2 margin + DPORT protection (rev. 1)" },
@@ -386,19 +394,25 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_t_d_pl1_dfw,  "J + DPORT protection, interleaved + wsr (rev. 1)" },
 };
 static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
+// Micro-USB: erste Variante mit DPORT-Schutz. Auf Chips vor Rev. 3 darf NUR ab hier gerechnet
+// werden - alle davor lesen H7 ungeschuetzt (Absturzgefahr, Errata 3.10).
+static const int V2_DF0   = 20;
+static_assert(V2_ALL == V2_DF0 + 7, "Micro-USB: _df-Varianten muessen am Ende von s_v2 stehen");
 // Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
-static const int V2_CHAIN_R3[] = { 11, 0, 1, 2 };
-// Micro-USB: Chips vor Rev. 3 nur Varianten mit geschuetztem H7-Lesen
-// 1.1.0.002: J mit vorbereitetem Schutz, 1.1.0.003: zusaetzlich verschachtelt (zuerst)
-static const int V2_CHAIN_DF[] = { 22, 21, 20, 16, 17, 18, 19 };   // 1.1.0.004: dfw zuerst
-static const int V2_COUNT_DF   = sizeof(V2_CHAIN_DF) / sizeof(V2_CHAIN_DF[0]);
-static const int V2_COUNT_R3   = sizeof(V2_CHAIN_R3) / sizeof(V2_CHAIN_R3[0]);
-static int V2_COUNT            = V2_COUNT_R3;
+// Ab 1.3.0.009: O zuerst (1 Takt schneller als J, Messbetrieb 0 eigene Fehler), dann J
+static const int V2_CHAIN_R3[] = { 16, 11, 0, 1, 2 };
+// Micro-USB: Kette fuer Chips vor Rev. 3 - nur _df (dfw = .004, dfp = .003, dfo = .002, J_df = .001, dann vorsichtiger)
+static const int V2_CHAIN_DF[] = { V2_DF0 + 6, V2_DF0 + 5, V2_DF0 + 4, V2_DF0 + 0, V2_DF0 + 1, V2_DF0 + 2, V2_DF0 + 3 };
 static const int* V2_CHAIN     = V2_CHAIN_R3;
+static int V2_COUNT            = sizeof(V2_CHAIN_R3) / sizeof(V2_CHAIN_R3[0]);
 static int s_chainPos = 0;
 static volatile bool s_testMode = false;   // Messbetrieb: keine automatischen Wechsel
 static volatile int s_v2Loop = -1;                  // -1 = klassische Schleife (Master 002)
 static volatile int s_v2Switches = 0;
+static const int V2_GUARD_R3 = 1;                   // Schutzfenster-Stufe (ab 1.3.0.008)
+static const int V2_GUARD_DF = V2_DF0 + 2;          // Micro-USB: "v2 +2 margin + DPORT protection"
+static int V2_GUARD          = V2_GUARD_R3;
+static volatile bool s_window = false;
 
 static uint32_t IRAM_ATTR hw_scan_v2(HwV2Fn fn, const uint32_t blk1[16], const uint32_t blk2[3],
                                      uint32_t nonce, uint32_t count,
@@ -455,10 +469,13 @@ static bool v2_selftest(HwV2Fn fn)
 bool hw_sha_select_loop()
 {
     // Rev. 0-2: DPORT-Fehler (lesen ohne Schutz stoert den anderen Kern)
-    // -> nur die Varianten mit geschuetztem H7-Lesen (Micro-USB-Variante)
-    V2_CHAIN = s_dportFix ? V2_CHAIN_DF : V2_CHAIN_R3;
-    V2_COUNT = s_dportFix ? V2_COUNT_DF : V2_COUNT_R3;
-    if (s_dportFix) Serial.println("[HW-SHA] Chip before rev. 3 -> v2 loops with DPORT protection");
+    // -> Micro-USB: nur die Varianten mit geschuetztem H7-Lesen, auch fuer das Schutzfenster
+    if (s_dportFix) {
+        V2_CHAIN = V2_CHAIN_DF;
+        V2_COUNT = sizeof(V2_CHAIN_DF) / sizeof(V2_CHAIN_DF[0]);
+        V2_GUARD = V2_GUARD_DF;
+        Serial.println("[HW-SHA] chip before rev. 3 -> v2 loops with DPORT protection");
+    }
     for (int n = 0; n < V2_COUNT; n++) {
         const int v = V2_CHAIN[n];
         // Bester aus drei: ein einzelner Ausreisser soll die schnelle Stufe nicht kosten
@@ -482,24 +499,56 @@ bool hw_sha_select_loop()
 // bestaetigt, ist die Stufe auf diesem Chip zu knapp -> naechste, vorsichtigere.
 void hw_sha_report_candidate(bool confirmed)
 {
-    static uint32_t hits = 0, bad = 0;
+    // Ab 1.3.0.005 zwei Fenster: kurze Fehlerschuebe (Nachtlauf .004: alle ~10 min 4-8 Stueck,
+    // im Schnitt 0,06 %) sind harmlos und duerfen nicht auf eine langsamere Stufe werfen.
+    //  - kurz: 256 Kandidaten (~35 s), wechseln erst ab 64 falschen (25 %) -> Variante wirklich kaputt
+    //  - lang: 4096 Kandidaten (~9 min), wechseln ab 41 falschen (> 1 %)
+    static uint32_t hitsS = 0, badS = 0, hitsL = 0, badL = 0;
     if (s_v2Loop < 0 || s_testMode) return;
-    hits++;
-    if (!confirmed) bad++;
-    if (hits < 256) return;
-    if (bad >= 8 && s_chainPos + 1 < V2_COUNT) {
-        s_chainPos++;
-        s_v2Loop = V2_CHAIN[s_chainPos];
-        s_v2Switches++;
-        Serial.printf("[HW-SHA] %lu of %lu candidates wrong -> switching to %s\n",
-                      (unsigned long)bad, (unsigned long)hits, s_v2[s_v2Loop].name);
+    hitsS++; hitsL++;
+    if (!confirmed) { badS++; badL++; }
+
+    uint32_t bad = 0, hits = 0;
+    if (hitsS >= 256) {
+        if (badS >= 64) { bad = badS; hits = hitsS; }
+        hitsS = badS = 0;
     }
-    hits = bad = 0;
+    if (!bad && hitsL >= 4096) {
+        if (badL >= 41) { bad = badL; hits = hitsL; }
+        hitsL = badL = 0;
+    }
+    if (bad && s_chainPos + 1 < V2_COUNT) {
+        s_chainPos++;
+        if (!s_window) s_v2Loop = V2_CHAIN[s_chainPos];
+        s_v2Switches++;
+        hitsS = badS = hitsL = badL = 0;
+        Serial.printf("[HW-SHA] %lu of %lu candidates wrong -> switching to %s\n",
+                      (unsigned long)bad, (unsigned long)hits, s_v2[V2_CHAIN[s_chainPos]].name);
+    }
 }
+
+// Ab 1.3.0.008: Schutzfenster. Waehrend der erwarteten Stoerung (siehe miner.cpp, guard)
+// rechnet der HW-Miner kurz mit der vorsichtigeren Stufe "v2 +2 margin" (257 Takte).
+
+static volatile int s_beforeWindow = -1;   // Messbetrieb: Variante vor dem Fenster
+
+void hw_sha_guard(bool on)
+{
+    if (on == s_window) return;
+    s_window = on;
+    if (on) {
+        s_beforeWindow = s_v2Loop;
+        if (s_v2Loop >= 0) s_v2Loop = V2_GUARD;
+    } else if (s_v2Loop >= 0) {
+        s_v2Loop = s_testMode ? s_beforeWindow : V2_CHAIN[s_chainPos];
+    }
+}
+
+bool hw_sha_guard_active() { return s_window; }
 
 const char* hw_sha_loop_name()
 {
-    return s_v2Loop >= 0 ? s_v2[s_v2Loop].name : "classic (Master 002, calibrated)";
+    return s_v2Loop >= 0 ? s_v2[s_v2Loop].name : "classic (calibrated)";
 }
 
 // ---------------------------------------------------------------------------
@@ -509,9 +558,15 @@ int hw_sha_variant_count() { return V2_ALL; }
 
 const char* hw_sha_variant_name(int i) { return (i >= 0 && i < V2_ALL) ? s_v2[i].name : "?"; }
 
+// Micro-USB: auf Chips vor Rev. 3 sind nur die _df-Varianten erlaubt
+static bool variant_allowed(int i)
+{
+    return i >= 0 && i < V2_ALL && (!s_dportFix || i >= V2_DF0);
+}
+
 bool hw_sha_variant_selftest(int i)
 {
-    return i >= 0 && i < V2_ALL && v2_selftest(s_v2[i].fn);
+    return variant_allowed(i) && v2_selftest(s_v2[i].fn);
 }
 
 // Ueberlebt einen Neustart (nicht beim Einschalten): zuletzt aktive Variante
@@ -521,7 +576,10 @@ static RTC_NOINIT_ATTR int32_t  s_rtcVariant;
 void hw_sha_set_variant(int i)
 {
     s_testMode = true;
-    if (i >= 0 && i < V2_ALL) s_v2Loop = i;
+    if (variant_allowed(i)) {
+        if (s_window) s_beforeWindow = i;      // Fenster offen: nach dem Fenster diese Variante
+        else s_v2Loop = i;
+    }
     s_rtcMagic = 0x4C4F4F50;     // "LOOP"
     s_rtcVariant = i;
 }
@@ -537,6 +595,7 @@ int hw_sha_variant_before_reset()
 // Takte pro Nonce im reinen Durchlauf (ohne Betriebssystem-Last der Mining-Schleife)
 float hw_sha_variant_cycles(int i)
 {
+    if (!variant_allowed(i)) return 0.0f;      // Micro-USB: ungeschuetzte Variante auf Rev. 1 nie starten
     uint32_t b1[16], b2[3], cands[8];
     for (int k = 0; k < 16; k++) b1[k] = 0x01234567u * (k + 3);
     for (int k = 0; k < 3; k++)  b2[k] = 0x89abcdefu * (k + 5);

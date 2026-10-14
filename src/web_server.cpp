@@ -7,6 +7,7 @@
 #include "stats.h"
 #include "web_page.h"
 #include "stratum_client.h"
+#include "diag.h"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -62,6 +63,16 @@ static void handle_stats()
     doc["ssid"]        = g_settings.wifiSsid;
     doc["ip"]          = WiFi.localIP().toString();
     doc["rssi"]        = WiFi.RSSI();
+    doc["channel"]     = WiFi.channel();
+    doc["wifiDrops"]   = g_stats.wifiDrops;
+    doc["wifiReconnects"] = g_stats.wifiReconnects;
+    doc["wifiLastReason"] = g_stats.wifiLastReason;
+    doc["guardActive"] = hw_sha_guard_active();
+    doc["guardPeriodS"]= g_stats.guardPeriodMs / 1000.0f;
+    doc["guardNextInS"]= g_stats.guardNextInS;
+    doc["guardBursts"] = g_stats.guardBursts;
+    doc["guardWindows"]= g_stats.guardWindows;
+    doc["guardErrors"] = g_stats.guardErrors;
     doc["heap"]        = ESP.getFreeHeap();
     doc["version"]     = MINER_NAME " v" MINER_VERSION;
 
@@ -209,6 +220,17 @@ void web_task(void*)
 
     s_server.on("/", handle_root);
     s_server.on("/api/stats", handle_stats);
+    s_server.on("/api/diag", HTTP_GET, [] {
+        s_server.send(200, "application/json", diag_json(s_server.arg("since").toInt()));
+    });
+#if DIAG_NET
+    // Test des Schutzfensters: gespielter Fehlerschub (zaehlt nicht in hwErrors)
+    s_server.on("/api/guardsim", HTTP_GET, [] {
+        const int n = s_server.hasArg("n") ? s_server.arg("n").toInt() : 3;
+        guard::g_simErrors += n > 0 && n < 50 ? n : 3;
+        s_server.send(200, "text/plain", "ok");
+    });
+#endif
     s_server.on("/api/config", HTTP_GET, handle_config_get);
     s_server.on("/api/config", HTTP_POST, handle_config_post);
     s_server.on("/api/scan", HTTP_GET, handle_scan);
