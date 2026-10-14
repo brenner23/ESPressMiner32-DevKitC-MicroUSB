@@ -21,12 +21,14 @@ mit optionaler externer **LED an GPIO13**.
 > Anderer Pin: `LED_PIN` in `include/config.h` ändern (`-1` = keine LED).
 > Verhalten: blinkt langsam im Einrichtungs-Portal, leuchtet beim Minen, kurz aus bei jedem Share.
 
-Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.006: ~973 kH/s** (Hardware 942 + Software-Miner 31,
-252 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+24 %**.
+Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (Hardware 969 + Software-Miner 31,
+247 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+27 %**.
+
+> **1000 kH/s auf einem ESP32 Rev. 1.0** – trotz des Errata-3.10-Schutzes, den auf diesem alten Chip jeder Hash braucht.
 Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.006.png" alt="Dashboard v1.1.0.006 auf ESP32 Rev. 1.0" width="720"><br>
-<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.006 – Pool, Worker und WLAN geschwärzt.
+<p align="center"><img src="docs/dashboard_v1.1.0.007.png" alt="Dashboard v1.1.0.007 auf ESP32 Rev. 1.0, 1000 kH/s" width="720"><br>
+<sub>Dashboard des Testboards (ESP32 Rev. 1.0) mit v1.1.0.007 bei ~1000 kH/s – Pool, Worker und WLAN geschwärzt.
 Nachtlauf mit v1.1.0.004 (11,1 h, Ø 973,2 kH/s): <a href="docs/nachtlauf_v1.1.0.004.png">Diagramm</a>.
 Konsolen-Ausgabe beim Start (Chip-Revision, Selbsttest, Benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
@@ -93,7 +95,7 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 ## Funktionen
 
-- **~973 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.006), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
+- **~1000 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.007), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
 - **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
 - **Software-Miner auf Core 0** zusätzlich (~31 kH/s)
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
@@ -208,7 +210,8 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 | v1.1.0.001: Variante J, nur das H7-Lesen geschützt | ~950 |
 | v1.1.0.002: Schutz in der LOAD-Wartezeit vorbereitet | ~962 |
 | v1.1.0.003: Schutz mit den Header-Writes verschachtelt | ~972 |
-| **v1.1.0.006: gleiche Schleife + WLAN-Wächter und Schutzfenster** | **~973** |
+| v1.1.0.006: gleiche Schleife + WLAN-Wächter und Schutzfenster | ~973 |
+| **v1.1.0.007: geschütztes H7-Lesen in die LOAD-Wartezeit verlegt** | **~1000** |
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete

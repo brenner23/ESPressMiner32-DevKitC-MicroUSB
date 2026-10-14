@@ -5,11 +5,11 @@
 
 #define MINER_NAME        "ESPressMiner32"
 #if HW_LOOP_TEST
-#define MINER_VERSION     "1.1.0.006-looptest"   // Messbetrieb Micro-USB: _df-Varianten .001-.004
+#define MINER_VERSION     "1.1.0.007-looptest"   // Messbetrieb Micro-USB: dfw (.004) gegen O-Varianten (.007)
 #elif DIAG_NET
-#define MINER_VERSION     "1.1.0.006-diag"   // Test-Build: Netz-Diagnose /api/diag (10-Minuten-Fehlerschub)
+#define MINER_VERSION     "1.1.0.007-diag"   // Test-Build: Netz-Diagnose /api/diag (10-Minuten-Fehlerschub)
 #else
-#define MINER_VERSION     "1.1.0.006"   // Micro-USB, Schritt 006: Stand USB-C v1.3.0.009 (WLAN-Waechter, Schutzfenster) + _df-Schleifen
+#define MINER_VERSION     "1.1.0.007"   // Micro-USB, Schritt 007: H7-Lesen in der LOAD-Wartezeit (+2), ~1000 kH/s
 #endif
 #define MINER_REPO_URL    "https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB"
 

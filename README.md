@@ -21,12 +21,14 @@ with an optional external **LED on GPIO13**.
 > Different pin: change `LED_PIN` in `include/config.h` (`-1` = no LED).
 > Behaviour: slow blink in the setup portal, on while mining, briefly off on every share.
 
-Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.006: ~973 kH/s** (hardware 942 + software miner 31,
-252 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+24 %**.
+Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (hardware 969 + software miner 31,
+247 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+27 %**.
+
+> **1000 kH/s on an ESP32 rev. 1.0** – despite the errata 3.10 protection that every hash on this old chip needs.
 On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
 
-<p align="center"><img src="docs/dashboard_v1.1.0.006.png" alt="Dashboard v1.1.0.006 on ESP32 rev. 1.0" width="720"><br>
-<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.006 – pool, worker and Wi-Fi redacted.
+<p align="center"><img src="docs/dashboard_v1.1.0.007.png" alt="Dashboard v1.1.0.007 on ESP32 rev. 1.0, 1000 kH/s" width="720"><br>
+<sub>Dashboard of the test board (ESP32 rev. 1.0) running v1.1.0.007 at ~1000 kH/s – pool, worker and Wi-Fi redacted.
 Overnight run of v1.1.0.004 (11.1 h, Ø 973.2 kH/s): <a href="docs/nachtlauf_v1.1.0.004.png">chart</a>.
 Console output at boot (chip revision, self-test, benchmark): <a href="docs/konsole_v1.1.0.001.log">docs/konsole_v1.1.0.001.log</a></sub></p>
 
@@ -93,7 +95,7 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 
 ## Features
 
-- **~973 kH/s** on ESP32 rev. 1.0 (v1.1.0.006), rev. 3 runs faster without protection – revision detected automatically
+- **~1000 kH/s** on ESP32 rev. 1.0 (v1.1.0.007), rev. 3 runs faster without protection – revision detected automatically
 - **Hash loop v2** in assembly (ported from NerdMiner Modded), chosen by a known-answer test with fallback stages
 - **Software miner on core 0** in addition (~31 kH/s)
 - **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
@@ -208,7 +210,8 @@ The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
 | v1.1.0.001: variant J, only the H7 read protected | ~950 |
 | v1.1.0.002: protection prepared during the LOAD wait | ~962 |
 | v1.1.0.003: protection interleaved with the header writes | ~972 |
-| **v1.1.0.006: same loop + Wi-Fi watchdog and guard window** | **~973** |
+| v1.1.0.006: same loop + Wi-Fi watchdog and guard window | ~973 |
+| **v1.1.0.007: protected H7 read moved into the LOAD wait** | **~1000** |
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are

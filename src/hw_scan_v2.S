@@ -286,6 +286,14 @@
     .elseif \df == 4 && \lpos + 1 == \k
     rsync                       // ... und rsync im naechsten
     NOPS    \rgap - 1
+    .elseif \df == 5 && \k == 0
+    wsr     a7, ps              // 1.1.0.007: H7 schon in der LOAD-Wartezeit gelesen
+    NOPS    \rgap - 1
+    .elseif \df == 5 && \k == 1
+    rsync
+    NOPS    \rgap - 1
+    .elseif \df == 5
+    NOPS    \rgap
     .else
     NOPS    \rgap
     .if \lpos == \k + 1
@@ -294,7 +302,7 @@
     .endif
     .endm
 
-    .macro PL_MINE_R name, sect, p1, d2, p2, pl1, d3, p3, pl2, lpos, wgap, rgap, df=0
+    .macro PL_MINE_R name, sect, p1, d2, p2, pl1, d3, p3, pl2, lpos, wgap, rgap, df=0, pre=0
     .section \sect, "ax"
     .global \name
     .type   \name, @function
@@ -349,7 +357,16 @@
     COPY    60, 60, \wgap
     NOPS    \p3
     s32i    a6, a2, R_LOAD      // ===== LOAD Digest 2 -> T[0..7] =====
-    .if \df >= 2
+    .if \df == 5
+    // Micro-USB 1.1.0.007: das geschuetzte Lesen von H7 (APB-Dummy + SHA-Register) liegt
+    // selbst in der LOAD-Wartezeit statt nops; \pre nops davor, bis die Engine T[7]
+    // geschrieben hat. Die Lese-Takte ersetzen pl2 (Selbsttest prueft die Lage).
+    rsil    a7, 5
+    l32i    a6, a3, CTX_APB
+    NOPS    \pre
+    l32i    a6, a6, 0           // Dummy-Lesen APB
+    l16ui   a6, a2, 28          // H7
+    .elseif \df >= 2
     // Micro-USB 1.1.0.002: Interrupts sperren und APB-Adresse holen, waehrend die
     // Engine T[0..7] beschreibt (kein Zugriff auf SHA-Register, a6/a7 sind frei)
     rsil    a7, 5
@@ -457,6 +474,13 @@
     PL_MINE_R hw_t_d_pl1_dfp,  .iram1.hwdf6, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 3
     // 1.1.0.004: + wsr ps ebenfalls in einen Write-Abstand (df = 4)
     PL_MINE_R hw_t_d_pl1_dfw,  .iram1.hwdf7, 4, 16, 40,  9, 14, 27, 10, 2, 1, 1, 4
+    // 1.1.0.007: Schleife O (p2 39, auf Rev. 3 bewaehrt) mit Schutz wie .003
+    PL_MINE_R hw_t_o_dfp,      .iram1.hwdf8, 4, 16, 39,  9, 14, 27, 10, 2, 1, 1, 3
+    // 1.1.0.007: O + H7 in der LOAD-Wartezeit lesen (df = 5), pre = nops vor dem Lesen
+    PL_MINE_R hw_t_o_dfr0,     .iram1.hwdf9, 4, 16, 39,  9, 14, 27, 10, 0, 1, 1, 5, 0
+    PL_MINE_R hw_t_o_dfr2,     .iram1.hwdfa, 4, 16, 39,  9, 14, 27, 10, 0, 1, 1, 5, 2
+    PL_MINE_R hw_t_o_dfr4,     .iram1.hwdfb, 4, 16, 39,  9, 14, 27, 10, 0, 1, 1, 5, 4
+    PL_MINE_R hw_t_o_dfr6,     .iram1.hwdfc, 4, 16, 39,  9, 14, 27, 10, 0, 1, 1, 5, 6
     PL_MINE   hw_v2_fast_df,   .iram1.hwdf2, 4, 16, 40, 10, 14, 27, 10, 2, 1, 1
     PL_MINE   hw_v2_margin_df, .iram1.hwdf3, 6, 16, 42, 12, 14, 29, 12, 2, 1, 1
     PL_MINE   hw_v2_wide_df,   .iram1.hwdf4, 18, 16, 54, 24, 14, 41, 24, 2, 1, 1

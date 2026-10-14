@@ -3,6 +3,16 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.007 (2026-10-14) – 1000 kH/s auf Rev. 1.0
+- **Neue Schleife „O + DPORT read in LOAD wait +2“:** Das geschützte H7-Lesen (Errata 3.10: `rsil` →
+  APB-Dummy-Lesen → `l16ui` → `wsr ps`) liegt jetzt in der Wartezeit nach LOAD, in der die SHA-Engine ohnehin
+  rechnet, statt zwischen den Header-Writes. Spart 6 Takte: **246,9 statt 253 Takte/Hash**.
+- Rückfallkette auf Chips vor Rev. 3: +2 → +4 → +6 → O_df → dfw (.004) → dfp → dfo → J_df → vorsichtiger.
+  Schutzfenster unverändert.
+- Messbetrieb (je 10 min, Laufzeit-Kontrolle aus): W 946,4 · O 946,4 · +6 957,7 · +4 957,8 · **+2 969,4** ·
+  +0 969,4 kH/s Hardware – **0 von 52.403 Kandidaten verworfen**. +0 bringt keinen Takt mehr als +2, deshalb +2 (Reserve).
+- Normalbetrieb: **Ø 1000,5 kH/s** (Hardware 969 + Software 31) über die ersten Minuten (erst am PC-USB, dann am Netzteil, Werte 998,9–1002,3), 0 abgelehnte Shares.
+
 ## v1.1.0.006 (2026-10-14) – WLAN-Wächter und Schutzfenster, ~973 kH/s
 - Codestand des USB-C-Projekts v1.3.0.009 übernommen:
   - **WLAN-Wächter:** nach 10 s ohne WLAN neu verbinden (Suche über alle Kanäle, z. B. nach Kanalwechsel im Mesh),

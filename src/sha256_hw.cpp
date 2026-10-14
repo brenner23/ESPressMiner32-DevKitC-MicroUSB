@@ -361,6 +361,11 @@ extern "C" uint32_t hw_v2_wide_df(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfo(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfp(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 extern "C" uint32_t hw_t_d_pl1_dfw(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_o_dfp(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_o_dfr0(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_o_dfr2(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_o_dfr4(volatile uint32_t* sha_base, HwV2Ctx* ctx);
+extern "C" uint32_t hw_t_o_dfr6(volatile uint32_t* sha_base, HwV2Ctx* ctx);
 
 static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_v2_fast,   "v2 fast (247 cycles)" },
@@ -392,17 +397,24 @@ static const struct { HwV2Fn fn; const char* name; } s_v2[] = {
     { hw_t_d_pl1_dfo,  "J + DPORT protection, prepared (rev. 1)" },
     { hw_t_d_pl1_dfp,  "J + DPORT protection, interleaved (rev. 1)" },
     { hw_t_d_pl1_dfw,  "J + DPORT protection, interleaved + wsr (rev. 1)" },
+    { hw_t_o_dfp,      "O + DPORT protection, interleaved (rev. 1)" },
+    { hw_t_o_dfr0,     "O + DPORT read in LOAD wait +0 (rev. 1)" },
+    { hw_t_o_dfr2,     "O + DPORT read in LOAD wait +2 (rev. 1)" },
+    { hw_t_o_dfr4,     "O + DPORT read in LOAD wait +4 (rev. 1)" },
+    { hw_t_o_dfr6,     "O + DPORT read in LOAD wait +6 (rev. 1)" },
 };
 static const int V2_ALL   = sizeof(s_v2) / sizeof(s_v2[0]);
 // Micro-USB: erste Variante mit DPORT-Schutz. Auf Chips vor Rev. 3 darf NUR ab hier gerechnet
 // werden - alle davor lesen H7 ungeschuetzt (Absturzgefahr, Errata 3.10).
 static const int V2_DF0   = 20;
-static_assert(V2_ALL == V2_DF0 + 7, "Micro-USB: _df-Varianten muessen am Ende von s_v2 stehen");
+static_assert(V2_ALL == V2_DF0 + 12, "Micro-USB: _df-Varianten muessen am Ende von s_v2 stehen");
 // Rueckfallkette (Indizes in s_v2). Ab 1.3.0.002: J zuerst (Messbetrieb: 0 Fehler unter Last)
 // Ab 1.3.0.009: O zuerst (1 Takt schneller als J, Messbetrieb 0 eigene Fehler), dann J
 static const int V2_CHAIN_R3[] = { 16, 11, 0, 1, 2 };
-// Micro-USB: Kette fuer Chips vor Rev. 3 - nur _df (dfw = .004, dfp = .003, dfo = .002, J_df = .001, dann vorsichtiger)
-static const int V2_CHAIN_DF[] = { V2_DF0 + 6, V2_DF0 + 5, V2_DF0 + 4, V2_DF0 + 0, V2_DF0 + 1, V2_DF0 + 2, V2_DF0 + 3 };
+// Micro-USB: Kette fuer Chips vor Rev. 3 - nur _df. Ab 1.1.0.007: H7-Lesen in der LOAD-Wartezeit
+// (+2 = 246,9 Takte, Messbetrieb 0 Fehler), dann +4, +6, O_df, dann dfw = .004, dfp = .003, dfo = .002, J_df = .001, dann vorsichtiger
+static const int V2_CHAIN_DF[] = { V2_DF0 + 9, V2_DF0 + 10, V2_DF0 + 11, V2_DF0 + 8,
+                                   V2_DF0 + 6, V2_DF0 + 5, V2_DF0 + 4, V2_DF0 + 0, V2_DF0 + 1, V2_DF0 + 2, V2_DF0 + 3 };
 static const int* V2_CHAIN     = V2_CHAIN_R3;
 static int V2_COUNT            = sizeof(V2_CHAIN_R3) / sizeof(V2_CHAIN_R3[0]);
 static int s_chainPos = 0;

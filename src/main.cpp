@@ -27,8 +27,9 @@ static StratumClient g_stratum;
 // 1.3.0.009: J (Referenz) gegen die Feinvarianten O/P/Q/R (siehe hw_scan_v2.S)
 // Micro-USB (Rev. 1): nur _df-Varianten (Indizes ab V2_DF0 = 20 in sha256_hw.cpp),
 // Kennbuchstabe = Schritt: 4 = dfw (.004), 3 = dfp (.003), 2 = dfo (.002), 1 = J_df (.001)
-static const int  LT_IDX[]   = { 26, 25, 24, 20 };
-static const char LT_TAG[]   = "4321";
+// 1.1.0.007: W = dfw (Referenz), O = O + Schutz wie .003, a..d = O + H7 in der LOAD-Wartezeit (+0/+2/+4/+6 nops)
+static const int  LT_IDX[]   = { 26, 27, 31, 30, 29, 28 };   // vorsichtig -> mutig
+static const char LT_TAG[]   = "WOdcba";
 static const int  LT_N       = sizeof(LT_IDX) / sizeof(LT_IDX[0]);
 static bool  s_ltOk[LT_N];
 static float s_ltCyc[LT_N];
