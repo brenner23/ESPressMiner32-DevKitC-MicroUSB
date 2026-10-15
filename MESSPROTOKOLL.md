@@ -12,6 +12,59 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | 1.1.0.004 | 2026-10-13 | + wsr ps im Write-Abstand | 972 | 942 / 31 | 0 | Benchmark 948,8 kH/s, 252 Takte – **kein Gewinn** |
 | 1.1.0.006 | 2026-10-14 | wie .004 + WLAN-Wächter, Schutzfenster | 973,8 | 942 / 32 | 1 / ~18.900 Kandidaten | Benchmark 948,7 kH/s, 252 Takte; 47 °C, 0 Fehler-Schübe |
 | 1.1.0.007 | 2026-10-14 | O + H7-Lesen in LOAD-Wartezeit (+2) | **1000,7** | 969 / 31 | 0 / 52.403 (Messbetrieb), 1 / 156.689 (3 h) | Benchmark 971,8 kH/s, 246 Takte; 42–47 °C |
+| ⭐ 1.1.0.008-pre1 | 2026-10-15 | wie .007 + Interrupt-Sperre Core 1 | **1002,5** | 971,2 / 31,1 | 0 / 3.697 Kandidaten (4 min) | aus USB-C Master 005 pre1; 36–44 °C, 5/0 Shares |
+| 1.1.0.008-pre2 ✖ | 2026-10-15 | pre1 + HW-Schleifen festgenagelt (4 KB, 0xca0) | 996,4 | 966,1 / 30,3 | 0 / 3.228 (3 min) | **langsamer (−5 HW, −0,8 SW) → verworfen**, ganzer IRAM um 0xbfc verschoben |
+| ⭐⭐ 1.1.0.008-pre3 | 2026-10-16 | pre1 + schneller SW-Scan im Flash | **1006,3** | 971,9 / 33,1 | 0 / 3.676 (4 min) | IRAM + alle 32 HW-Schleifen absolut wie pre1 |
+| 1.1.0.008-pre4 | 2026-10-16 | pre3 + Wellen-Fehler getrennt (Messhilfe) | 1006,5 | 971,8 / 33,1 | 0 / 1.089 (1 min), Langlauf läuft | IRAM identisch mit pre3 |
+
+## 1.1.0.008-pre4 – Wellen-Fehler getrennt anzeigen (Messhilfe, aus USB-C Master 005 Pre 4)
+- `include/stats.h` `waveErrors`; `src/miner.cpp` guard::task zählt jeden HW-Fehler genau 1x als Welle, wenn er im
+  Fenster (geschützt oder Stichprobe) oder in einem erkannten Schub liegt (`winInBurst` gegen Doppelzählung);
+  `/api/stats` `waveErrors` + `loopErrors`; Dashboard „0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)“;
+  Konsole „HW errors (discarded): x (+y from z Wi-Fi waves)“. **Nichts wird gelöscht:** `hwErrors` bleibt die Summe.
+- IRAM identisch mit pre3 (875 Symbole, gleiche Adressen). Flashen 18 × 64 kB ohne Wiederholung, NVS vorsorglich
+  aus der Sicherung zurückgeschrieben (Wattebausch bei laufender Firmware = BOOT-Werksreset).
+- Kurztest 1 min: 1006,5 kH/s (HW 971,8 + SW 33,1), 0 Fehler (Schleife 0 + Welle 0).
+- Langlauf: Board am Netzteil, Logger im LAN fragt `/api/stats` alle 60 s ab (26 h).
+
+## ⭐⭐ 1.1.0.008-pre3 – schneller SW-Scan, Code im Flash statt IRAM
+- Ohne Festnageln (`HW_LOOP_PIN 0`). Schneller SW-Pfad aus USB-C (`src/sha256_sw.cpp`, `include/sha256_sw.h`,
+  Selbsttest „Fast software scan == reference“ in `src/selftest.cpp`).
+- Erster Versuch: `sw_h7` mit eigenem Abschnitt `.iram1.zswfast` → landete trotzdem **vor** den HW-Schleifen
+  (Linker ordnet nicht nach Namen), 387 IRAM-Symbole verschoben → nicht geflasht.
+- Lösung: `sw_h7` + `sw_scan` ohne IRAM_ATTR (Flash, Cache); `sw_scan_ref` (alter Pfad) bleibt im IRAM.
+  Ergebnis: IRAM bis aufs Byte wie .007/pre1 (Ende 0x4009b0a8), alle 32 `hw_*` absolut gleich
+  (aktiv `hw_t_o_dfr2` 0x4008e45c), `sw_h7` bei 0x400da6fc.
+- Flashen: erster MAC-Lesversuch ohne Antwort (zu früh), zweiter OK; 18 × 64 kB, `verify-flash` OK.
+  Einstellungen danach wieder leer → NVS (0x9000, 20 KB) aus der vorher gelesenen Flash-Sicherung (nur lokal, enthält WLAN-Daten)
+  zurückgeschrieben, verifiziert.
+- Messung 16.10. ab ~00:20: **HW 971,9 + SW 33,1 = 1006,3 kH/s** (pre1 1002,5) – SW +2 (USB-C mit IRAM: +5),
+  HW unverändert, 0 Fehler / 3.676 Kandidaten nach 4 min, 7/0 Shares.
+- Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.008-pre3_1006khs.zip`, Firmware `backups/firmware_v1.1.0.008-pre3.bin`.
+
+## 1.1.0.008-pre2 ✖ – HW-Schleifen festnageln (verworfen)
+- Änderung: in `src/hw_scan_v2.S` vor `hw_v2_fast` `.balign 4096` + `.skip 0xca0` (wie USB-C Master 005 Pre 3).
+- Ergebnis: alle `hw_*` modulo 0x1000 wie .007, aber **absolut +0x2000** (aktive `hw_t_o_dfr2` 0x4008e45c → 0x4009045c).
+  Ursache: die 4-KB-Ausrichtung gilt für die ganze Ausgabe-Section `.iram0.text` → deren Start springt von
+  0x40080404 auf 0x40081000, **der gesamte IRAM-Code (auch SW-Scan, ISRs, WLAN) rutscht um 0xbfc**, die Schleifen
+  danach durch das Auffüllen auf 0x2000. IRAM-Ende 0x4009b0a8 → 0x4009d0a8 (8 KB verschenkt).
+- Messung 3 min (Portal-Neustart, Einstellungen vorher durch BOOT/Wattebausch beim Start gelöscht und neu eingetragen):
+  **HW 966,1 + SW 30,3 = 996,4 kH/s**, 0 Fehler / 3.228 Kandidaten. Gegenüber pre1 −5 HW, −0,8 SW → verworfen.
+- Lehre für Rev. 1: Nicht nur der Versatz in 4 KB zählt, sondern die absolute Lage (vermutlich IRAM-Block /
+  Zugriffe beider Kerne). Festnageln per Ausrichtung verschiebt alles → hier ungeeignet.
+- Merkpunkt: „BOOT 5 s = Werksreset“ verträgt sich nicht mit dem Wattebausch, wenn er beim Start noch drückt.
+
+## ⭐ 1.1.0.008-pre1 – Interrupt-Sperre auf Core 1 (aus USB-C Master 005)
+- Vorlage: `UEBERGABE_USB-C_Master005_2026-10-15.md`. Je Änderung ein Schritt (pre1 … pre4), wie auf USB-C.
+- Vorher: kompletter Flash (4 MB) zweimal gelesen, identisch, lokal gesichert (backups/, nicht im Repo).
+- Änderung: `HW_IRQ_LOCK 1` (`include/config.h`), in `mine_loop` nur für HW `XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL)`
+  vor `scan(...)`, `XTOS_RESTORE_INTLEVEL` danach. Die `_df`-Schleifen (Rev. 1) sichern den PS mit `rsil 5` und stellen
+  ihn mit `wsr ps` wieder her → die Sperre bleibt während der Charge bestehen, der Errata-3.10-Schutz (Stufe 5) auch.
+- Schleifen-Adressen: alle 32 `hw_*` exakt gleich wie .007 (`hw_v2_fast` 0x4008aca0).
+- Flashen nur App, 18 × 64 kB mit 460800 Baud, alle im 1. Versuch, `verify-flash` OK.
+- Messung 15.10. ~23:40, 4 min über `/api/stats`: **1002,5 kH/s (HW 971,2 + SW 31,1)**, HW +1,8 gegenüber .007
+  (USB-C: +~2). **0 Fehler / 3.697 Kandidaten**, 5/0 Shares, 0 WLAN-Drops, Reset „power-on“, 36–44 °C.
+- Backup: `backups/ESPressMiner32_MicroUSB_v1.1.0.008-pre1_1002khs.zip`, Firmware `backups/firmware_v1.1.0.008-pre1.bin`.
 
 ## 1.1.0.007 – H7-Lesen in der LOAD-Wartezeit, 1000 kH/s
 - Idee: Nach dem LOAD wartet die Schleife ohnehin ~10 Takte (pl2) auf die SHA-Engine. Das geschützte H7-Lesen

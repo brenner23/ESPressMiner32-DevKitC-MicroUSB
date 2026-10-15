@@ -3,6 +3,20 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.0.008-pre4 (2026-10-16) – Vorabversion (Testing), ~1006 kH/s auf Rev. 1.0
+Übernahme der Neuerungen aus dem USB-C-Projekt (1.3.0.011-pre1…pre4), **jeder Schritt einzeln gemessen**:
+- **pre1 – Interrupts auf Core 1 je Hardware-Charge gesperrt** (`HW_IRQ_LOCK`): Hardware 969 → 971 kH/s.
+  Der Errata-3.10-Schutz der Rev.-1-Schleifen (Stufe 5) bleibt voll wirksam.
+- **pre2 – Hash-Schleifen per 4-KB-Ausrichtung festnageln** (`HW_LOOP_PIN`): **verworfen**. Die Ausrichtung verschiebt auf
+  diesem Chip den gesamten IRAM-Code (−5 kH/s). Auf Rev. 1 zählt die absolute Lage. `HW_LOOP_PIN` bleibt als Schalter (0).
+- **pre3 – schneller Software-Scan** auf Core 0 (vorberechnete Runden, früher Abbruch, beim Start gegen den
+  Referenzpfad geprüft): 31 → 33 kH/s. Der Code liegt hier **im Flash statt im IRAM**, damit die Hash-Schleifen
+  unverändert an ihrer gemessenen Stelle bleiben (IRAM byte-gleich mit 1.1.0.007).
+- **pre4 – Fehler aus WLAN-Wellen getrennt angezeigt** (Messhilfe, in Arbeit): Dashboard z. B.
+  `0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)`, `/api/stats` zusätzlich `waveErrors` / `loopErrors`,
+  `hwErrors` bleibt die Summe. Nichts wird gelöscht oder versteckt.
+- Messung (je 1–4 min, Netzteil folgt im Langlauf): **~1006 kH/s** (Hardware 971,8 + Software 33,1), 0 Fehler.
+
 ## v1.1.0.007 (2026-10-14) – 1000 kH/s auf Rev. 1.0
 - **Neue Schleife „O + DPORT read in LOAD wait +2“:** Das geschützte H7-Lesen (Errata 3.10: `rsil` →
   APB-Dummy-Lesen → `l16ui` → `wsr ps`) liegt jetzt in der Wartezeit nach LOAD, in der die SHA-Engine ohnehin

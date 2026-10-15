@@ -23,6 +23,7 @@ with an optional external **LED on GPIO13**.
 
 Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (hardware 969 + software miner 31,
 247 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+27 %**.
+**Pre-release v1.1.0.008-pre4 (testing): ~1006 kH/s** (hardware 971.8 + software 33.1), long-term test running.
 
 > **1000 kH/s on an ESP32 rev. 1.0** – despite the errata 3.10 protection that every hash on this old chip needs.
 On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
@@ -97,7 +98,7 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 
 - **~1000 kH/s** on ESP32 rev. 1.0 (v1.1.0.007), rev. 3 runs faster without protection – revision detected automatically
 - **Hash loop v2** in assembly (ported from NerdMiner Modded), chosen by a known-answer test with fallback stages
-- **Software miner on core 0** in addition (~31 kH/s)
+- **Software miner on core 0** in addition (~31 kH/s, ~33 kH/s with the fast scan since v1.1.0.008-pre3)
 - **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
 - **Self-test** at boot (genesis block, 2000 random headers, 5000 nonces). If it fails, the miner does not mine.
 - **Every hit is re-checked in software** before a share is sent to the pool
@@ -212,6 +213,29 @@ The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
 | v1.1.0.003: protection interleaved with the header writes | ~972 |
 | v1.1.0.006: same loop + Wi-Fi watchdog and guard window | ~973 |
 | **v1.1.0.007: protected H7 read moved into the LOAD wait** | **~1000** |
+| v1.1.0.008-pre4 (pre-release): interrupts masked per batch, fast software scan (in flash), Wi-Fi wave errors shown separately | ~1006 |
+
+### Wi-Fi waves and guard window
+
+In long-term tests the remaining calculation errors came almost only as **bursts of 5–8 errors, every ~600 s like
+clockwork** – on the USB-C board and on this rev. 1 board alike. The cause is not the miner but the **Wi-Fi connection**:
+the timing is tied to the ESP's Wi-Fi association and shifts when it reconnects. Most likely it is a periodic action of
+the access point, e.g. key renewal or the mesh function of a **FRITZ!Box** router. Depending on your router the period
+may differ or the waves may not exist at all.
+
+The **guard window** (since v1.1.0.006) learns this period from the bursts (1–30 min) and mines with a more careful loop
+from 6 s before to 6 s after the expected moment. Every 6th window stays unprotected as a probe, so the miner notices
+whether the wave is still there – that probe is where the ~8 errors per hour come from. After a restart the first wave
+hits unprotected because the period is not known yet.
+
+**Display (since v1.1.0.008-pre4, a measuring aid – work in progress):** the dashboard shows the errors separately, e.g.
+`0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)`. The first number are errors of the hash loop itself, in brackets
+the errors from Wi-Fi waves and the number of waves. **Nothing is deleted:** `/api/stats` still returns `hwErrors` (total)
+plus `waveErrors` and `loopErrors`. If in doubt, `hwErrors` counts. Every hit is re-checked in software either way –
+a miscalculated hit never becomes a share.
+
+<p align="center"><img src="docs/dashboard_v1.1.0.008-pre4.png" alt="Dashboard v1.1.0.008-pre4 on ESP32 rev. 1.0" width="720"><br>
+<sub>v1.1.0.008-pre4 on the rev. 1.0 test board, 80 s after power-on – pool, worker and Wi-Fi redacted.</sub></p>
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are

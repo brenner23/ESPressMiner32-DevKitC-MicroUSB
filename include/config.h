@@ -9,7 +9,7 @@
 #elif DIAG_NET
 #define MINER_VERSION     "1.1.0.007-diag"   // Test-Build: Netz-Diagnose /api/diag (10-Minuten-Fehlerschub)
 #else
-#define MINER_VERSION     "1.1.0.007"   // Micro-USB, Schritt 007: H7-Lesen in der LOAD-Wartezeit (+2), ~1000 kH/s
+#define MINER_VERSION     "1.1.0.008-pre4"   // Micro-USB, Pre 4: pre3 + Wellen-Fehler getrennt angezeigt (Messhilfe)
 #endif
 #define MINER_REPO_URL    "https://github.com/brenner23/ESPressMiner32-DevKitC-MicroUSB"
 
@@ -48,6 +48,13 @@
 // kostete ~0,2 % (1 ms je 500 ms). Zurueck: 500.
 #ifndef HW_YIELD_MS
 #define HW_YIELD_MS              0
+#endif
+
+// Pre 1 (aus USB-C Master 005): Interrupts auf Core 1 waehrend einer HW-Charge sperren.
+// Tick-/IPC-Unterbrechungen kosten sonst ~0,5 %. Danach kurz frei, damit wartende Interrupts laufen.
+// Rev. 1: die _df-Schleifen stellen den gesicherten PS selbst wieder her (bleibt gesperrt). 0 = aus (wie 1.1.0.007).
+#ifndef HW_IRQ_LOCK
+#define HW_IRQ_LOCK              1
 #endif
 
 // Sicherheitsabstand (CPU-Takte) auf die beim Start gemessenen Grenzwerte

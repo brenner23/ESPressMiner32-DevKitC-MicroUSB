@@ -23,6 +23,7 @@ mit optionaler externer **LED an GPIO13**.
 
 Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (Hardware 969 + Software-Miner 31,
 247 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+27 %**.
+**Vorabversion v1.1.0.008-pre4 (Testing): ~1006 kH/s** (Hardware 971,8 + Software 33,1), Langzeittest läuft.
 
 > **1000 kH/s auf einem ESP32 Rev. 1.0** – trotz des Errata-3.10-Schutzes, den auf diesem alten Chip jeder Hash braucht.
 Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
@@ -97,7 +98,7 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 - **~1000 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.007), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
 - **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
-- **Software-Miner auf Core 0** zusätzlich (~31 kH/s)
+- **Software-Miner auf Core 0** zusätzlich (~31 kH/s, ~33 kH/s mit dem schnellen Scan ab v1.1.0.008-pre3)
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
 - **Selbsttest** beim Start (Genesis-Block, 2000 Zufalls-Header, 5000 Nonces). Schlägt er fehl, wird nicht gemint.
 - **Jeder Treffer wird in Software nachgerechnet**, bevor ein Share zum Pool geht
@@ -212,6 +213,29 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 | v1.1.0.003: Schutz mit den Header-Writes verschachtelt | ~972 |
 | v1.1.0.006: gleiche Schleife + WLAN-Wächter und Schutzfenster | ~973 |
 | **v1.1.0.007: geschütztes H7-Lesen in die LOAD-Wartezeit verlegt** | **~1000** |
+| v1.1.0.008-pre4 (Vorabversion): Interrupts je Charge gesperrt, schneller Software-Scan (im Flash), Fehler aus WLAN-Wellen getrennt angezeigt | ~1006 |
+
+### WLAN-Wellen und Schutzfenster
+
+In Langzeittests kamen die restlichen Rechenfehler fast nur als **Schub von 5–8 Fehlern, pünktlich alle ~600 s** –
+auf dem USB-C-Board genauso wie auf diesem Rev.-1-Board. Die Ursache liegt nicht im Miner, sondern in der
+**WLAN-Verbindung**: Der Takt hängt an der Anmeldung des ESP am WLAN und springt bei einer Neuanmeldung mit. Sehr
+wahrscheinlich ist es eine periodische Aktion des Access Points, z. B. der Schlüsselwechsel oder die Mesh-Funktion einer
+**Fritzbox**. Je nach Router kann der Takt anders sein oder ganz fehlen.
+
+Das **Schutzfenster** (ab v1.1.0.006) lernt diesen Takt aus den Schüben (1–30 min) und rechnet 6 s vor bis 6 s nach dem
+erwarteten Zeitpunkt mit einer vorsichtigeren Schleife. Jedes 6. Fenster bleibt als Stichprobe ungeschützt, damit der
+Miner merkt, ob die Welle noch da ist – daher kommen die ~8 Fehler pro Stunde. Nach einem Neustart trifft die erste Welle
+ungeschützt, weil der Takt noch nicht bekannt ist.
+
+**Anzeige (ab v1.1.0.008-pre4, Messhilfe – in Arbeit):** Das Dashboard zeigt die Fehler getrennt, z. B.
+`0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)`. Die erste Zahl sind Fehler der Hash-Schleife selbst, in Klammern
+die Fehler aus WLAN-Wellen und die Zahl der Wellen. **Nichts wird gelöscht:** `/api/stats` liefert weiter `hwErrors`
+(gesamt) sowie `waveErrors` und `loopErrors`. Im Zweifel gilt `hwErrors`. Jeder Treffer wird ohnehin in Software
+nachgeprüft – ein falsch berechneter Treffer wird nie zum Share.
+
+<p align="center"><img src="docs/dashboard_v1.1.0.008-pre4.png" alt="Dashboard v1.1.0.008-pre4 auf ESP32 Rev. 1.0" width="720"><br>
+<sub>v1.1.0.008-pre4 auf dem Rev.-1.0-Testboard, 80 s nach dem Einschalten – Pool, Worker und WLAN geschwärzt.</sub></p>
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete

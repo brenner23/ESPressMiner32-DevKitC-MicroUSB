@@ -252,6 +252,20 @@
     // Gemessene Grenzen (ruhig / mit Busverkehr auf Core 0):
     //   p1 3/4, p2 39/40, pl1 9/10, p3 26/27, pl2 9/10, d2 12, d3 8.
     // 247 Takte pro Nonce.
+#ifndef HW_LOOP_PIN
+#define HW_LOOP_PIN         0        // 1.1.0.008-pre2: 1 war langsamer (ganzer IRAM verschoben) -> aus
+#endif
+#define HW_LOOP_PIN_ALIGN   4096
+#define HW_LOOP_PIN_OFFSET  0xca0    // Micro-USB: Versatz von hw_v2_fast in .007 / .008-pre1 (USB-C: 0xc74)
+#if HW_LOOP_PIN
+    // 1.1.0.008-pre2 (aus USB-C Master 005 Pre 3): Lage aller HW-Schleifen festnageln. Die Schleifen reagieren
+    // auf ihre Lage im IRAM (USB-C: +17 KB SW-Code davor -> alles um 0x4370 verschoben -> ~10 % Fehler).
+    // Der Block beginnt deshalb immer auf demselben Versatz innerhalb von HW_LOOP_PIN_ALIGN wie in .007
+    // (hw_v2_fast = 0x4008aca0 -> Versatz 0xca0 in 4 KB). Die uebrigen Schleifen folgen in fester Reihenfolge.
+    .section .iram1.hwv2f, "ax"
+    .balign HW_LOOP_PIN_ALIGN
+    .skip   HW_LOOP_PIN_OFFSET
+#endif
     PL_MINE hw_v2_fast,   .iram1.hwv2f,  4, 16, 40, 10, 14, 27, 10, 2, 1
     // +2 bzw. +14 Takte auf jede Wartezeit (257 / 317 Takte): Rueckfall, wenn der
     // Selbsttest scheitert oder die Software Kandidaten nicht bestaetigt.

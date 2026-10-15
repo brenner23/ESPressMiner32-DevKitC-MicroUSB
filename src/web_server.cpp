@@ -71,6 +71,8 @@ static void handle_stats()
     doc["guardPeriodS"]= g_stats.guardPeriodMs / 1000.0f;
     doc["guardNextInS"]= g_stats.guardNextInS;
     doc["guardBursts"] = g_stats.guardBursts;
+    doc["waveErrors"]  = g_stats.waveErrors;    // pre4: Anteil von hwErrors aus WLAN-Wellen
+    doc["loopErrors"]  = g_stats.hwErrors - g_stats.waveErrors;   // echte Fehler der Schleife
     doc["guardWindows"]= g_stats.guardWindows;
     doc["guardErrors"] = g_stats.guardErrors;
     doc["heap"]        = ESP.getFreeHeap();
