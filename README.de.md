@@ -23,7 +23,9 @@ mit optionaler externer **LED an GPIO13**.
 
 Gemessen auf ESP32-D0WDQ6 Rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (Hardware 969 + Software-Miner 31,
 247 Takte pro Double-SHA256). Vorher (v1.0.0): 786 kH/s → **+27 %**.
-**Vorabversion v1.1.0.008-pre4 (Testing): ~1006 kH/s** (Hardware 971,8 + Software 33,1), Langzeittest läuft.
+**Aktuelle Version v1.1.1 (getestet): ~1006 kH/s** (Hardware 971,8 + Software 33,1).
+Nachtlauf 9,0 h: Ø **1005,6 kH/s**, nie unter 1003, **0 Neustarts, 753/753 Shares angenommen, 5 Rechenfehler**
+(~1 auf 96.000 Treffer). **Am Pool nachgeprüft:** 987 ±38 kH/s kamen über 8 volle Stunden dieser Nacht an.
 
 > **1000 kH/s auf einem ESP32 Rev. 1.0** – trotz des Errata-3.10-Schutzes, den auf diesem alten Chip jeder Hash braucht.
 Auf ESP32-D0WD-V3 (Revision 3) nimmt dieselbe Firmware automatisch die Schleife ohne Schutz (~1019 kH/s im Hauptprojekt).
@@ -96,7 +98,7 @@ Pool**. Auf den Ertrag hat das keinen messbaren Einfluss.
 
 ## Funktionen
 
-- **~1000 kH/s** auf ESP32 Rev. 1.0 (v1.1.0.007), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
+- **~1006 kH/s** auf ESP32 Rev. 1.0 (v1.1.1, getestet), Rev. 3 ohne Schutz schneller – Revision wird automatisch erkannt
 - **Hash-Schleife v2** in Assembler (portiert aus NerdMiner Modded), Auswahl per Known-Answer-Test mit Rückfallstufen
 - **Software-Miner auf Core 0** zusätzlich (~31 kH/s, ~33 kH/s mit dem schnellen Scan ab v1.1.0.008-pre3)
 - **Chip-Temperatur** im Dashboard, **Überhitzungsschutz** (90 °C SW-Miner Pause, 100 °C Stopp, weiter unter 80 °C)
@@ -214,6 +216,7 @@ Die Werte oben gelten für Rev. 3 (Hauptprojekt). Auf **Rev. 1.0** (diese Varian
 | v1.1.0.006: gleiche Schleife + WLAN-Wächter und Schutzfenster | ~973 |
 | **v1.1.0.007: geschütztes H7-Lesen in die LOAD-Wartezeit verlegt** | **~1000** |
 | v1.1.0.008-pre4 (Vorabversion): Interrupts je Charge gesperrt, schneller Software-Scan (im Flash), Fehler aus WLAN-Wellen getrennt angezeigt | ~1006 |
+| **v1.1.1 (aktuell, getestet): = pre4 nach 9 h Nachtlauf; Dashboard zeigt nur die Fehler der Schleife (`SHOW_WAVE_ERRORS`)** | **~1006** |
 
 ### WLAN-Wellen und Schutzfenster
 
@@ -228,14 +231,26 @@ erwarteten Zeitpunkt mit einer vorsichtigeren Schleife. Jedes 6. Fenster bleibt 
 Miner merkt, ob die Welle noch da ist – daher kommen die ~8 Fehler pro Stunde. Nach einem Neustart trifft die erste Welle
 ungeschützt, weil der Takt noch nicht bekannt ist.
 
-**Anzeige (ab v1.1.0.008-pre4, Messhilfe – in Arbeit):** Das Dashboard zeigt die Fehler getrennt, z. B.
-`0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)`. Die erste Zahl sind Fehler der Hash-Schleife selbst, in Klammern
-die Fehler aus WLAN-Wellen und die Zahl der Wellen. **Nichts wird gelöscht:** `/api/stats` liefert weiter `hwErrors`
-(gesamt) sowie `waveErrors` und `loopErrors`. Im Zweifel gilt `hwErrors`. Jeder Treffer wird ohnehin in Software
-nachgeprüft – ein falsch berechneter Treffer wird nie zum Share.
+**Schalter `SHOW_WAVE_ERRORS`** (ganz oben in `include/config.h`, ab v1.1.1):
+- `0` (Standard): Dashboard und Konsole zeigen nur die Fehler der Hash-Schleife, z. B. `5 discarded (calculation errors)`.
+- `1`: zusätzlich die Fehler aus WLAN-Wellen, z. B. `5 discarded (+8 from 1 Wi-Fi wave)` – praktisch, um das eigene
+  Netz zu vermessen.
 
-<p align="center"><img src="docs/dashboard_v1.1.0.008-pre4.png" alt="Dashboard v1.1.0.008-pre4 auf ESP32 Rev. 1.0" width="720"><br>
-<sub>v1.1.0.008-pre4 auf dem Rev.-1.0-Testboard, 80 s nach dem Einschalten – Pool, Worker und WLAN geschwärzt.</sub></p>
+Gelöscht wird in keinem Fall etwas: `/api/stats` liefert immer `hwErrors` (gesamt), `waveErrors` und `loopErrors`.
+Die Trennung ist eine Messhilfe; im Zweifel gilt `hwErrors`. Jeder Treffer wird in Software nachgeprüft – ein falsch
+berechneter Treffer wird nie zum Share.
+
+<p align="center"><img src="docs/dashboard_v1.1.1.png" alt="Dashboard nach dem 9-h-Nachtlauf auf ESP32 Rev. 1.0: 1007,1 kH/s, Ø 1005,6, 754/754 Shares, 5 discarded" width="720"><br>
+<sub>Rev.-1.0-Testboard nach dem 9-h-Nachtlauf – Pool, Worker und WLAN geschwärzt.</sub></p>
+
+**So liest man den Screenshot** (getesteter Stand 1.1.0.008-pre4 = 1.1.1, Live-Werte nach 9 h 02 min):
+- **5 discarded** = echte Rechenfehler der Hash-Schleife in 9 Stunden (~1 auf 96.000 Treffer); 3 davon in der ersten
+  Stunde, während der Chip warm wurde (44 → 47 °C), danach 2 in 8 Stunden.
+- **In dieser Nacht kam gar keine WLAN-Welle** – das Testboard hängt an einem Mesh-Knoten, an dem die Fritzbox-Welle
+  nicht auftrat. Das Schutzfenster wurde deshalb nie aktiv, die Hashrate-Kurve bleibt flach (beim USB-C-Board zeigt
+  sich das Schutzfenster als kleine Delle alle ~600 s; das ist gewollt, kein Fehler).
+- Falsche Hashes erreichen nie den Pool: Jeder Treffer wird in Software nachgeprüft (0 abgelehnt).
+- **Komplettes Nachtprotokoll** (eine Zeile pro Minute, 9 h, keine privaten Daten): [docs/nachtlauf_v1.1.1.log](docs/nachtlauf_v1.1.1.log) · [CSV](docs/nachtlauf_v1.1.1.csv)
 
 Die Wartezeiten werden bei jedem Start **kalibriert**: Der ESP32 sucht die kleinste fehlerfreie Wartezeit und
 schlägt `HW_CAL_MARGIN_*` Takte Reserve drauf. Im laufenden Betrieb bleiben sie unverändert. Falsch berechnete

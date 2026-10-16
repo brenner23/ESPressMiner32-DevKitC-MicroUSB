@@ -3,6 +3,14 @@
 Messwerte: ESP32-D0WDQ6 **Rev. 1.0**, 240 MHz, ESP32-DevKitC 38-Pin (Micro-USB, CP2102), eigener Stratum-Pool,
 Software-Miner auf Core 0 an. Details je Schritt: [MESSPROTOKOLL.md](MESSPROTOKOLL.md).
 
+## v1.1.1 (2026-10-16) – getestet, ~1006 kH/s auf Rev. 1.0
+- Code = 1.1.0.008-pre4 nach Nachtlauf (9,0 h am Netzteil): Ø **1005,6 kH/s** (nie unter 1003), 0 Neustarts,
+  0 WLAN-Abbrüche, Shares 753/0, **5 Fehler der Schleife** (3 davon in der ersten Stunde), **keine WLAN-Welle**
+  (Testboard an einem Mesh-Knoten ohne Welle). Pool 8 volle Stunden: **987 ±38 kH/s**.
+- Neu: Schalter `SHOW_WAVE_ERRORS` (ganz oben in config.h, Standard 0): Dashboard/Konsole zeigen nur die Fehler der
+  Hash-Schleife; mit 1 zusätzlich „(+8 from 1 Wi-Fi wave)“. /api/stats zählt immer (`showWave` neu). Wie USB-C v1.3.1.
+- Nachtprotokoll `docs/nachtlauf_v1.1.1.log` / `.csv`, Screenshot `docs/dashboard_v1.1.1.png` (nach 9 h 02 min, geschwärzt).
+
 ## v1.1.0.008-pre4 (2026-10-16) – Vorabversion (Testing), ~1006 kH/s auf Rev. 1.0
 Übernahme der Neuerungen aus dem USB-C-Projekt (1.3.0.011-pre1…pre4), **jeder Schritt einzeln gemessen**:
 - **pre1 – Interrupts auf Core 1 je Hardware-Charge gesperrt** (`HW_IRQ_LOCK`): Hardware 969 → 971 kH/s.

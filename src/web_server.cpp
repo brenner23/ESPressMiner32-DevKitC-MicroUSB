@@ -73,6 +73,7 @@ static void handle_stats()
     doc["guardBursts"] = g_stats.guardBursts;
     doc["waveErrors"]  = g_stats.waveErrors;    // pre4: Anteil von hwErrors aus WLAN-Wellen
     doc["loopErrors"]  = g_stats.hwErrors - g_stats.waveErrors;   // echte Fehler der Schleife
+    doc["showWave"]    = SHOW_WAVE_ERRORS ? true : false;          // Dashboard: Wellen-Teil anzeigen?
     doc["guardWindows"]= g_stats.guardWindows;
     doc["guardErrors"] = g_stats.guardErrors;
     doc["heap"]        = ESP.getFreeHeap();

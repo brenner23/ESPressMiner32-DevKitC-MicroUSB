@@ -15,7 +15,8 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
 | ⭐ 1.1.0.008-pre1 | 2026-10-15 | wie .007 + Interrupt-Sperre Core 1 | **1002,5** | 971,2 / 31,1 | 0 / 3.697 Kandidaten (4 min) | aus USB-C Master 005 pre1; 36–44 °C, 5/0 Shares |
 | 1.1.0.008-pre2 ✖ | 2026-10-15 | pre1 + HW-Schleifen festgenagelt (4 KB, 0xca0) | 996,4 | 966,1 / 30,3 | 0 / 3.228 (3 min) | **langsamer (−5 HW, −0,8 SW) → verworfen**, ganzer IRAM um 0xbfc verschoben |
 | ⭐⭐ 1.1.0.008-pre3 | 2026-10-16 | pre1 + schneller SW-Scan im Flash | **1006,3** | 971,9 / 33,1 | 0 / 3.676 (4 min) | IRAM + alle 32 HW-Schleifen absolut wie pre1 |
-| 1.1.0.008-pre4 | 2026-10-16 | pre3 + Wellen-Fehler getrennt (Messhilfe) | 1006,5 | 971,8 / 33,1 | 0 / 1.089 (1 min), Langlauf läuft | IRAM identisch mit pre3 |
+| ⭐⭐ **1.1.1** (= pre4, getestet) | 2026-10-16 | pre4 + Schalter `SHOW_WAVE_ERRORS` (nur Anzeige) | **1005,6** (9,0 h) | 971,8 / 33,1 | 5 / 480.804 (Schleife 5 + Welle 0) | Nachtlauf, 753/0 Shares, Pool 8 h 987 ±38, IRAM = pre4 |
+| 1.1.0.008-pre4 | 2026-10-16 | pre3 + Wellen-Fehler getrennt (Messhilfe) | 1006,5 | 971,8 / 33,1 | 4 / 467.470 (8,76 h), Schleife 4 + Welle 0 | IRAM identisch mit pre3; Ø 1005,6, Pool ~980 |
 
 ## 1.1.0.008-pre4 – Wellen-Fehler getrennt anzeigen (Messhilfe, aus USB-C Master 005 Pre 4)
 - `include/stats.h` `waveErrors`; `src/miner.cpp` guard::task zählt jeden HW-Fehler genau 1x als Welle, wenn er im
@@ -26,6 +27,24 @@ Messungen mit Software-Miner an (Core 0), eigener Stratum-Pool im LAN (Diff 0,01
   aus der Sicherung zurückgeschrieben (Wattebausch bei laufender Firmware = BOOT-Werksreset).
 - Kurztest 1 min: 1006,5 kH/s (HW 971,8 + SW 33,1), 0 Fehler (Schleife 0 + Welle 0).
 - Langlauf: Board am Netzteil, Logger im LAN fragt `/api/stats` alle 60 s ab (26 h).
+
+## Langlauf 1.1.0.008-pre4 (Zwischenauswertung nach 8,76 h, Logger läuft bis 26 h)
+16.10. 00:08–08:54, Netzteil, WLAN über einen Mesh-Knoten (RSSI −70…−75 dBm), Logger im LAN alle 60 s.
+
+| Version | Laufzeit | Ø kH/s | Wellen-Fehler erwartet / gemessen | Schleifen-Fehler /h · /Tag · /Mio Kandidaten | Neustarts |
+|---|---|---|---|---|---|
+| 1.1.0.008-pre4 | 8,76 h | **1005,6** (1-min-Werte 1003,2–1007,5) | ~8/h bei Welle / **0 – keine Welle** (0 Schübe) | **0,46 · ~11 · 8,6** (4 auf 467.470) | 0 |
+
+- **Keine WLAN-Welle in 8,76 h:** 0 Fehler-Schübe, das Schutzfenster hat nie einen Takt gelernt (`guardWindows` 0).
+  Am aktuellen Mesh-Knoten tritt die Fritzbox-Welle bei diesem Board offenbar nicht auf → alle 4 Fehler sind
+  **Einzelfehler der Schleife**, kein Schub.
+- Zeitpunkte: 0,52 h · 0,64 h · 0,99 h · 5,19 h → **3 davon in der ersten Stunde** (Aufwärmen, 44 → 47 °C), danach
+  **1 Fehler in 7,8 h** (≈ 0,13/h, ≈ 3/Tag). Kein 600-s-Muster.
+- Shares: 734 angenommen / 0 abgelehnt; erwartet bei 1005,6 kH/s und Pool-Diff 0,01: ~738 → **99,4 %**.
+- **Pool-Gegenprobe** (`shares.json`, volle Stunden 01–07 Uhr): 575 Shares in 7 h = 82,1/h × 11,93 = **~980 kH/s**
+  (±4 % statistisch bei 575 Shares) – im Rahmen der Anzeige 1005,6.
+- Temperatur 43,9–47,2 °C, 0 WLAN-Abbrüche, freier Heap ≥ 138 KB (kein Leck).
+- Vergleich 1.1.0.007 (3 h): 1 Fehler / 156.689 = 6,4/Mio, 0,33/h → pre4 im gleichen Bereich, bei +5 kH/s.
 
 ## ⭐⭐ 1.1.0.008-pre3 – schneller SW-Scan, Code im Flash statt IRAM
 - Ohne Festnageln (`HW_LOOP_PIN 0`). Schneller SW-Pfad aus USB-C (`src/sha256_sw.cpp`, `include/sha256_sw.h`,

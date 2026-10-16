@@ -23,7 +23,9 @@ with an optional external **LED on GPIO13**.
 
 Measured on ESP32-D0WDQ6 rev. 1.0 @ 240 MHz, **v1.1.0.007: ~1000 kH/s** (hardware 969 + software miner 31,
 247 cycles per double SHA-256). Before (v1.0.0): 786 kH/s → **+27 %**.
-**Pre-release v1.1.0.008-pre4 (testing): ~1006 kH/s** (hardware 971.8 + software 33.1), long-term test running.
+**Current version v1.1.1 (tested): ~1006 kH/s** (hardware 971.8 + software 33.1).
+Night run 9.0 h: average **1005.6 kH/s**, never below 1003, **0 restarts, 753/753 shares accepted, 5 calculation errors**
+(~1 in 96,000 hits). **Verified at the pool:** 987 ±38 kH/s arrived over 8 full hours of that night.
 
 > **1000 kH/s on an ESP32 rev. 1.0** – despite the errata 3.10 protection that every hash on this old chip needs.
 On ESP32-D0WD-V3 (revision 3) the same firmware automatically uses the loop without protection (~1019 kH/s in the main project).
@@ -96,7 +98,7 @@ before it is sent, so **a wrong hash never reaches the pool**. There is no measu
 
 ## Features
 
-- **~1000 kH/s** on ESP32 rev. 1.0 (v1.1.0.007), rev. 3 runs faster without protection – revision detected automatically
+- **~1006 kH/s** on ESP32 rev. 1.0 (v1.1.1, tested), rev. 3 runs faster without protection – revision detected automatically
 - **Hash loop v2** in assembly (ported from NerdMiner Modded), chosen by a known-answer test with fallback stages
 - **Software miner on core 0** in addition (~31 kH/s, ~33 kH/s with the fast scan since v1.1.0.008-pre3)
 - **Chip temperature** on the dashboard, **overheat protection** (90 °C pause SW miner, 100 °C stop, resume below 80 °C)
@@ -214,6 +216,7 @@ The values above are for rev. 3 (main project). On **rev. 1.0** (this variant):
 | v1.1.0.006: same loop + Wi-Fi watchdog and guard window | ~973 |
 | **v1.1.0.007: protected H7 read moved into the LOAD wait** | **~1000** |
 | v1.1.0.008-pre4 (pre-release): interrupts masked per batch, fast software scan (in flash), Wi-Fi wave errors shown separately | ~1006 |
+| **v1.1.1 (current, tested): = pre4 after a 9 h night run; dashboard shows only loop errors (`SHOW_WAVE_ERRORS`)** | **~1006** |
 
 ### Wi-Fi waves and guard window
 
@@ -228,14 +231,26 @@ from 6 s before to 6 s after the expected moment. Every 6th window stays unprote
 whether the wave is still there – that probe is where the ~8 errors per hour come from. After a restart the first wave
 hits unprotected because the period is not known yet.
 
-**Display (since v1.1.0.008-pre4, a measuring aid – work in progress):** the dashboard shows the errors separately, e.g.
-`0 discarded (calculation errors) (+8 from 1 Wi-Fi wave)`. The first number are errors of the hash loop itself, in brackets
-the errors from Wi-Fi waves and the number of waves. **Nothing is deleted:** `/api/stats` still returns `hwErrors` (total)
-plus `waveErrors` and `loopErrors`. If in doubt, `hwErrors` counts. Every hit is re-checked in software either way –
-a miscalculated hit never becomes a share.
+**Switch `SHOW_WAVE_ERRORS`** (top of `include/config.h`, since v1.1.1):
+- `0` (default): dashboard and console show only the errors of the hash loop, e.g. `5 discarded (calculation errors)`.
+- `1`: additionally the errors from Wi-Fi waves, e.g. `5 discarded (+8 from 1 Wi-Fi wave)` – useful for measuring
+  your own network.
 
-<p align="center"><img src="docs/dashboard_v1.1.0.008-pre4.png" alt="Dashboard v1.1.0.008-pre4 on ESP32 rev. 1.0" width="720"><br>
-<sub>v1.1.0.008-pre4 on the rev. 1.0 test board, 80 s after power-on – pool, worker and Wi-Fi redacted.</sub></p>
+Nothing is deleted either way: `/api/stats` always returns `hwErrors` (total), `waveErrors` and `loopErrors`.
+The split is a measuring aid; if in doubt, `hwErrors` counts. Every hit is re-checked in software – a miscalculated
+hit never becomes a share.
+
+<p align="center"><img src="docs/dashboard_v1.1.1.png" alt="Dashboard after the 9 h night run on ESP32 rev. 1.0: 1007.1 kH/s, average 1005.6, 754/754 shares, 5 discarded" width="720"><br>
+<sub>Rev. 1.0 test board after the 9 h night run – pool, worker and Wi-Fi redacted.</sub></p>
+
+**How to read this screenshot** (tested build 1.1.0.008-pre4 = 1.1.1, live values after 9 h 02 min):
+- **5 discarded** = real calculation errors of the hash loop in 9 hours (~1 in 96,000 hits); 3 of them in the first
+  hour while the chip warmed up (44 → 47 °C), then 2 in 8 hours.
+- **No Wi-Fi waves at all during this night** – the test board sits on a mesh node where the FRITZ!Box wave did not
+  show up. The guard window therefore never activated and the hashrate chart stays flat (on the USB-C board the guard
+  window shows as a small dip every ~600 s; that is intended, not a fault).
+- Wrong hashes never reach the pool: every hit is re-checked in software (0 rejected).
+- **Full night log** (one line per minute, 9 h, no private data): [docs/nachtlauf_v1.1.1.log](docs/nachtlauf_v1.1.1.log) · [CSV](docs/nachtlauf_v1.1.1.csv)
 
 The wait times are **calibrated at every boot**: the ESP32 searches for the smallest error-free wait time and
 adds `HW_CAL_MARGIN_*` cycles of headroom. They stay unchanged during operation. Miscalculated hits are

@@ -14,3 +14,8 @@ backups/
 *.7z
 __pycache__/
 *.pyc
+
+# lokale Notizen
+STAND.md
+UEBERGABE_*.md
+UPDATE_NOTIZ_*.md
